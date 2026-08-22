@@ -1,0 +1,2476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Finances</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>💰</text></svg>">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f0fdf4;
+  --card: #ffffff;
+  --border: #bbf7d0;
+  --text: #16241a;
+  --muted: #4b6355;
+  --green: #15803d;
+  --red: #dc2626;
+  --accent: #15803d;
+  --input-bg: #f0fdf4;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+.app { max-width: 1080px; margin: 0 auto; padding: 24px 20px 48px; }
+
+header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0; }
+.month-nav { display: flex; align-items: center; gap: 10px; }
+.month-label { font-size: 17px; font-weight: 600; min-width: 150px; text-align: center; }
+
+button { cursor: pointer; font: inherit; }
+.nav-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--card); color: var(--text); border: 1px solid var(--border);
+  font-size: 16px; line-height: 1;
+}
+.nav-btn:hover { border-color: var(--accent); }
+.link-btn { background: none; border: none; color: var(--accent); padding: 0; font-size: 13px; }
+.link-btn:hover { text-decoration: underline; }
+
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.cards-5 { grid-template-columns: repeat(5, 1fr); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.card .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+.card .value { font-size: 22px; font-weight: 700; }
+.card .sub { font-size: 11px; margin-top: 4px; }
+.value.green { color: var(--green); }
+.value.red { color: var(--red); }
+.amount.red { color: var(--red); }
+.overspent-note { color: var(--red); font-size: 12px; margin-top: 4px; font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: 5fr 6fr; gap: 16px; align-items: start; }
+.grid-even { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+#nwChart svg { display: block; width: 100%; height: auto; }
+
+.panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.panel h2 { margin: 0 0 14px; font-size: 15px; }
+
+input {
+  background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%; height: 36px;
+}
+input:focus { outline: none; border-color: var(--accent); }
+input::placeholder { color: #7d9488; }
+
+.field { flex: 1; min-width: 0; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.form-row { display: flex; gap: 10px; margin-bottom: 12px; }
+
+.type-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px; }
+.type-tab { padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; }
+.type-tab:hover { color: var(--text); }
+
+.split-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
+.split-row:not(:first-child) label { display: none; }
+.split-row:only-child .remove-btn { visibility: hidden; }
+.split-row .cat { flex: 2; }
+.split-row .amt { flex: 1; }
+.split-footer { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 10px; font-size: 13px; }
+
+.remove-btn { background: none; border: none; color: var(--muted); font-size: 14px; padding: 0 6px; height: 36px; flex: none; }
+.remove-btn:hover { color: var(--red); }
+.move-btn { background: none; border: none; color: var(--muted); font-size: 11px; padding: 0 3px; height: 36px; flex: none; line-height: 1; }
+.move-btn:hover:not(:disabled) { color: var(--accent); }
+.move-btn:disabled { opacity: 0.25; cursor: default; }
+
+.submit-btn {
+  width: 100%; padding: 10px; border: none; border-radius: 8px;
+  background: var(--green); color: #ffffff; font-weight: 700; font-size: 14px; margin-top: 4px;
+}
+.submit-btn:hover { filter: brightness(1.1); }
+.add-btn { flex: none; padding: 8px 16px; border: none; border-radius: 8px; background: var(--green); color: #ffffff; font-weight: 700; height: 36px; }
+.add-btn:hover { filter: brightness(1.1); }
+.btn-secondary { flex: none; padding: 8px 16px; border: 1px solid var(--accent); border-radius: 8px; background: transparent; color: var(--accent); font-weight: 700; height: 36px; }
+.btn-secondary:hover { background: rgba(21, 128, 61, 0.12); }
+.backup-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.ok-text { color: var(--green); }
+.error { color: var(--red); font-size: 13px; margin-top: 8px; }
+.error-text { color: var(--red); }
+.small { font-size: 12px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 1px solid var(--border);
+}
+td { padding: 9px 8px; border-bottom: 1px solid rgba(187, 247, 208, 0.7); }
+th.num, td.num { text-align: right; }
+tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; }
+
+.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.tax-badge { border: none; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; flex: none; }
+.split-tag { font-size: 10px; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--muted); margin-left: 4px; }
+.reimb-tag { color: var(--green); border-color: var(--green); }
+.reimb-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); margin-bottom: 10px; cursor: pointer; }
+.reimb-check input { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.reimb-hint { margin: -4px 0 12px; line-height: 1.4; }
+.muted { color: var(--muted); }
+.empty { color: var(--muted); font-size: 14px; text-align: center; padding: 14px 0; }
+
+#categoryChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-manager { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
+.cat-manager summary { cursor: pointer; color: var(--muted); font-size: 13px; user-select: none; }
+.cat-manager summary:hover { color: var(--accent); }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+.chip.custom { border-color: var(--accent); }
+.chip-x { background: none; border: none; color: var(--muted); padding: 0; font-size: 11px; line-height: 1; }
+.chip-x:hover { color: var(--red); }
+
+select {
+  background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 0 10px; font: inherit; font-size: 13px; height: 36px;
+}
+select:focus { outline: none; border-color: var(--accent); }
+
+.view-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.view-tab {
+  flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted); font-size: 14px; font-weight: 600;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active { color: var(--accent); border-color: var(--accent); background: rgba(21, 128, 61, 0.1); }
+.view-tab.active:hover { color: var(--accent); }
+
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.panel-head h2 { margin: 0; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+
+
+.edit-btn { background: none; border: none; color: var(--muted); font-size: 13px; padding: 0 6px; height: 36px; flex: none; }
+.edit-btn:hover { color: var(--accent); }
+
+.editing-banner {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  background: rgba(21, 128, 61, 0.12); border: 1px solid var(--accent); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; margin-bottom: 12px;
+}
+
+.pie-wrap { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.legend { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
+.legend-row { display: flex; align-items: center; gap: 8px; }
+.legend-row .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.legend-row .name { flex: 1; }
+.legend-row .pct { font-weight: 700; min-width: 52px; text-align: right; }
+
+.bar-chart { display: flex; flex-direction: column; gap: 11px; font-size: 13px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-row .bar-label {
+  width: 92px; flex: none; text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bar-track { position: relative; flex: 1; height: 18px; min-width: 40px; }
+.bar-track .bar-zero { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.bar-track .bar-fill { position: absolute; top: 1px; height: 16px; }
+.bar-value { flex: none; width: 112px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.bar-value .pct { font-weight: 700; min-width: 46px; text-align: right; }
+@media (max-width: 520px) {
+  .bar-row { flex-wrap: wrap; }
+  .bar-row .bar-label { width: 100%; text-align: left; }
+  .bar-track { order: 3; width: 100%; flex: none; margin-left: 0; }
+  .bar-value { order: 2; margin-left: auto; }
+}
+
+.income-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(187, 247, 208, 0.7); font-size: 14px; }
+.income-row .amount { margin-left: auto; }
+.income-row .spacer { width: 26px; }
+.income-row.total { border-bottom: none; font-weight: 700; }
+
+.entry-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(187, 247, 208, 0.7); font-size: 14px; }
+.entry-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-dollar { color: var(--muted); }
+.entry-amt { width: 108px; height: 32px; text-align: right; flex: none; }
+.subhead { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; margin: 14px 0 6px; }
+.subhead:first-of-type { margin-top: 0; }
+
+.nw-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
+.nw-legend .item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.nw-legend .swatch { width: 14px; height: 3px; border-radius: 2px; flex: none; }
+
+.footnote { text-align: center; font-size: 12px; margin-top: 4px; }
+
+/* AI Analysis Styling */
+.ai-header {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+}
+
+.date-range-selector {
+  display: flex; gap: 8px; align-items: center;
+}
+
+.api-status { display: flex; align-items: center; gap: 6px; }
+.api-status.ready { color: var(--green); }
+.api-status.error { color: var(--red); }
+
+.ai-insights-panel {
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; margin-bottom: 12px; min-height: 80px;
+}
+
+.insights-loading { color: var(--muted); font-style: italic; font-size: 13px; }
+.insights-content { font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.insights-error { color: var(--red); font-size: 13px; }
+
+.ai-chat-container {
+  display: flex; flex-direction: column; height: 400px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+
+.ai-chat-messages {
+  flex: 1; overflow-y: auto; padding: 12px; display: flex;
+  flex-direction: column; gap: 10px; font-size: 13px;
+}
+
+.chat-message { display: flex; flex-direction: column; gap: 3px; }
+.chat-message.user { align-items: flex-end; }
+.chat-message.assistant { align-items: flex-start; }
+.chat-role { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.chat-text {
+  max-width: 85%; padding: 8px 11px; border-radius: 6px; word-wrap: break-word; white-space: pre-wrap;
+}
+.chat-message.user .chat-text {
+  background: var(--accent); color: #ffffff; font-weight: 500;
+}
+.chat-message.assistant .chat-text {
+  background: #e2f3e5; color: var(--text);
+}
+.chat-time { font-size: 10px; color: var(--muted); }
+.chat-typing { color: var(--muted); font-style: italic; padding: 0 12px; font-size: 12px; }
+
+.ai-chat-input-area {
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 10px; border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.ai-chat-input-area textarea {
+  flex: 1; padding: 8px 10px; min-height: 40px; max-height: 80px; resize: vertical;
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: inherit; font-size: 13px;
+}
+.ai-chat-input-area button:disabled { opacity: 0.45; cursor: default; }
+
+.ai-key-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); display: none; align-items: center;
+  justify-content: center; z-index: 1000;
+}
+
+.ai-key-modal[data-open] { display: flex; }
+
+.ai-key-dialog {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; width: 90%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.ai-key-dialog h3 { margin: 0 0 14px; font-size: 16px; }
+
+.ai-key-dialog input {
+  width: 100%; padding: 10px; border: 1px solid var(--border);
+  background: var(--input-bg); color: var(--text); border-radius: 6px;
+  font-size: 13px; margin-bottom: 12px;
+}
+
+.ai-key-warning {
+  background: rgba(21, 128, 61, 0.1); border: 1px solid var(--accent);
+  border-radius: 6px; padding: 10px 12px; font-size: 12px; margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.ai-key-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+.ai-key-buttons button { min-width: 80px; }
+
+.signin-gate {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.signin-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 32px; width: 90%; max-width: 380px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.signin-card h2 { margin: 0 0 8px; font-size: 20px; }
+.signin-card p { color: var(--muted); font-size: 13px; margin: 0 0 20px; line-height: 1.5; }
+.signin-card .add-btn { width: 100%; }
+.signin-card .link-btn { margin-top: 14px; display: inline-block; }
+.signin-error { color: var(--red); font-size: 12px; margin-top: 12px; }
+.sync-status { font-size: 12px; color: var(--muted); }
+.sync-status.err { color: var(--red); }
+
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+  .grid-even { grid-template-columns: 1fr; }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .cards-5 { grid-template-columns: repeat(2, 1fr); }
+  .ai-chat-container { height: 300px; }
+  .chat-text { max-width: 100%; }
+  .entry-row { gap: 6px; }
+  .entry-amt { width: 92px; }
+  /* Let add-forms wrap instead of forcing their column (and the page) wider than the screen. */
+  .form-row { flex-wrap: wrap; }
+  .grid-even > .panel { min-width: 0; }
+}
+</style>
+<script src="https://accounts.google.com/gsi/client"></script>
+</head>
+<body>
+<div class="signin-gate" id="signinGate" hidden>
+  <div class="signin-card">
+    <h2>💰 My Finances</h2>
+    <p>Sign in with Google to sync your data across devices through your own Google Drive.</p>
+    <button type="button" class="add-btn" id="googleSignInBtn">Sign in with Google</button>
+    <div class="signin-error" id="signinError" hidden></div>
+    <button type="button" class="link-btn" id="skipSyncBtn">Continue without syncing</button>
+  </div>
+</div>
+<div class="app">
+  <header>
+    <h1>💰 My Finances</h1>
+    <span class="sync-status" id="syncStatus" hidden></span>
+    <div class="month-nav">
+      <button class="nav-btn" id="prevMonth" aria-label="Previous month">‹</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button class="nav-btn" id="nextMonth" aria-label="Next month">›</button>
+      <button class="link-btn" id="backToCurrent" hidden>Back to current month</button>
+    </div>
+  </header>
+
+  <div class="view-tabs">
+    <button type="button" class="view-tab" id="viewDashTab">Dashboard</button>
+    <button type="button" class="view-tab active" id="viewIncomeTab">Income Statement</button>
+    <button type="button" class="view-tab" id="viewBalanceTab">Balance Sheet</button>
+    <button type="button" class="view-tab" id="viewAITab">AI Analysis</button>
+  </div>
+
+  <div id="incomeView">
+  <div class="cards">
+    <div class="card"><div class="label">Income</div><div class="value" id="sumIncome">$0.00</div></div>
+    <div class="card"><div class="label">Expenses</div><div class="value" id="sumExpenses">$0.00</div><div class="sub muted">fixed costs + spending</div></div>
+    <div class="card"><div class="label">Saved &amp; Invested</div><div class="value" id="sumSaved">$0.00</div></div>
+    <div class="card"><div class="label">Left Over</div><div class="value green" id="sumLeft">$0.00</div><div class="overspent-note" id="overspentNote" hidden></div></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <form class="panel" id="txForm">
+        <h2>Add Transaction</h2>
+        <div class="editing-banner" id="editingBanner" hidden>
+          <span id="editingLabel">Editing transaction</span>
+          <button type="button" class="link-btn" id="cancelEdit">Cancel</button>
+        </div>
+        <div class="type-tabs" id="typeTabs">
+          <button type="button" class="type-tab" data-type="fixed">Fixed Cost</button>
+          <button type="button" class="type-tab" data-type="spending">Spending</button>
+          <button type="button" class="type-tab" data-type="savings">Savings</button>
+          <button type="button" class="type-tab" data-type="investing">Investing</button>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="txDate">Date</label>
+            <input type="date" id="txDate" required>
+          </div>
+          <div class="field" id="businessField">
+            <label for="txBusiness" id="businessLabel">Business</label>
+            <input id="txBusiness" placeholder="e.g. Costco">
+          </div>
+          <div class="field" id="accountField" hidden>
+            <label for="txAccount">Account</label>
+            <select id="txAccount" style="height:36px"></select>
+          </div>
+        </div>
+        <div id="expenseFields">
+          <label class="reimb-check"><input type="checkbox" id="txReimburse"> This is a reimbursement or refund</label>
+          <div class="muted small reimb-hint" id="reimburseHint" hidden>Enter a positive amount — it's subtracted from the category you pick (and added back to Left Over). Use the same type (Fixed Cost / Spending) as the original expense.</div>
+          <div id="splitRows"></div>
+          <div class="split-footer">
+            <button type="button" class="link-btn" id="addSplit">+ Split into another category</button>
+            <span class="muted" id="splitTotal" hidden></span>
+          </div>
+        </div>
+        <div id="savingFields" hidden>
+          <div class="form-row">
+            <div class="field">
+              <label for="txAmount">Amount</label>
+              <input type="number" id="txAmount" step="0.01" placeholder="0.00">
+              <span class="muted small">Negative pulls money back out (e.g. -100).</span>
+            </div>
+          </div>
+        </div>
+        <div class="error" id="txError" hidden></div>
+        <button class="submit-btn" type="submit" id="txSubmit">Add Spending</button>
+      </form>
+
+      <div class="panel">
+        <h2>Income Sources</h2>
+        <div id="incomeList"></div>
+        <button type="button" class="link-btn" id="copyIncome" hidden style="margin:8px 0">Copy income sources from last month</button>
+        <form class="form-row" id="incomeForm" style="margin-top:12px">
+          <div class="field" style="flex:none">
+            <select id="incTag" aria-label="Income type" style="height:36px">
+              <option value="earned">Earned</option>
+              <option value="capital">Capital Gains</option>
+              <option value="dividend">Dividend</option>
+              <option value="interest">Interest</option>
+              <option value="nontax">Not Taxable</option>
+            </select>
+          </div>
+          <div class="field" style="flex:2">
+            <input id="incName" placeholder="Source (e.g. Paycheck)" aria-label="Income source name">
+          </div>
+          <div class="field" style="flex:1">
+            <input type="number" id="incAmount" min="0" step="0.01" placeholder="0.00" aria-label="Income amount">
+          </div>
+          <button class="add-btn" type="submit">Add</button>
+        </form>
+        <div class="muted small" style="margin-top:6px">Tag each source: Earned (job), Capital Gains (stock sales), Dividend, Interest (e.g. high-yield savings), Not Taxable (e.g. VA benefits). Click a tag in the list to change it.</div>
+        <div class="error" id="incError" hidden></div>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Where Your Income Went</h2>
+        <div id="pieArea"></div>
+      </div>
+      <div class="panel">
+        <h2>Expenses by Category</h2>
+        <div id="categoryArea"></div>
+        <details class="cat-manager">
+          <summary>Manage categories</summary>
+          <p class="muted small" style="margin:10px 0 12px">Used for Fixed Cost and Spending. Add your own here, or just type a new one straight into the category box when adding a transaction.</p>
+          <div id="categoryChips"></div>
+          <form class="form-row" id="categoryForm" style="margin-top:12px">
+            <div class="field" style="flex:2">
+              <input id="catName" placeholder="New category (e.g. Pets)" aria-label="New category name">
+            </div>
+            <button class="add-btn" type="submit">Add</button>
+          </form>
+          <div class="error" id="catError" hidden></div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Transactions</h2>
+      <div class="filters">
+        <select id="filterType" aria-label="Filter by type">
+          <option value="all">All types</option>
+          <option value="fixed">Fixed Cost</option>
+          <option value="spending">Spending</option>
+          <option value="savings">Savings</option>
+          <option value="investing">Investing</option>
+        </select>
+        <select id="filterCat" aria-label="Filter by category">
+          <option value="all">All categories</option>
+        </select>
+      </div>
+    </div>
+    <div id="txArea"></div>
+  </div>
+  </div><!-- /incomeView -->
+
+  <div id="balanceView" hidden>
+    <div class="cards">
+      <div class="card"><div class="label">Total Assets</div><div class="value green" id="sumAssets">$0.00</div></div>
+      <div class="card"><div class="label">Total Liabilities</div><div class="value" id="sumLiabs">$0.00</div></div>
+      <div class="card"><div class="label">Net Worth</div><div class="value green" id="sumNetWorth">$0.00</div><div class="sub muted">assets − liabilities</div></div>
+      <div class="card"><div class="label">Liquid Net Worth</div><div class="value green" id="sumLiquidNetWorth">$0.00</div><div class="sub muted">liquid assets − liabilities</div></div>
+    </div>
+
+    <div class="grid-even">
+      <div class="panel">
+        <h2>Assets</h2>
+        <p class="muted small" style="margin:-4px 0 12px">What you own. <b>Liquid</b> = cash-like accounts you could tap quickly (checking, savings, brokerage, cash management). <b>Illiquid</b> = things that take time to sell (car, home). Enter values as of this month.</p>
+        <div class="subhead">Liquid</div>
+        <div id="assetLiquidList"></div>
+        <div class="subhead">Illiquid</div>
+        <div id="assetIlliquidList"></div>
+        <button type="button" class="link-btn" id="copyAssets" hidden style="margin:8px 0">Copy assets from last month</button>
+        <form class="form-row" id="assetForm" style="margin-top:12px">
+          <div class="field" style="flex:none">
+            <select id="assetLiquid" aria-label="Asset type" style="height:36px">
+              <option value="liquid">Liquid</option>
+              <option value="illiquid">Illiquid</option>
+            </select>
+          </div>
+          <div class="field" style="flex:2">
+            <input id="assetName" placeholder="Asset (e.g. Checking Account)" aria-label="Asset name">
+          </div>
+          <div class="field" style="flex:1">
+            <input type="number" id="assetAmount" min="0" step="0.01" placeholder="0.00" aria-label="Asset value">
+          </div>
+          <button class="add-btn" type="submit">Add</button>
+        </form>
+        <div class="error" id="assetError" hidden></div>
+      </div>
+
+      <div class="panel">
+        <h2>Liabilities</h2>
+        <p class="muted small" style="margin:-4px 0 12px">What you owe — credit card balances, car loan, student loans, mortgage balance. Enter what's owed as of this month.</p>
+        <div id="liabList"></div>
+        <button type="button" class="link-btn" id="copyLiabs" hidden style="margin:8px 0">Copy liabilities from last month</button>
+        <form class="form-row" id="liabForm" style="margin-top:12px">
+          <div class="field" style="flex:2">
+            <input id="liabName" placeholder="Liability (e.g. Credit Card)" aria-label="Liability name">
+          </div>
+          <div class="field" style="flex:1">
+            <input type="number" id="liabAmount" min="0" step="0.01" placeholder="0.00" aria-label="Liability amount">
+          </div>
+          <button class="add-btn" type="submit">Add</button>
+        </form>
+        <div class="error" id="liabError" hidden></div>
+      </div>
+    </div>
+  </div><!-- /balanceView -->
+
+  <div id="dashView" hidden>
+    <div class="cards cards-5">
+      <div class="card"><div class="label">Income</div><div class="value" id="dashIncome">$0</div></div>
+      <div class="card"><div class="label">Fixed Costs</div><div class="value" id="dashFixed">$0</div></div>
+      <div class="card"><div class="label">Expenses</div><div class="value" id="dashExpenses">$0</div><div class="sub muted">fixed costs + spending</div></div>
+      <div class="card"><div class="label">Saved</div><div class="value" id="dashSavings">$0</div></div>
+      <div class="card"><div class="label">Invested</div><div class="value" id="dashInvesting">$0</div></div>
+    </div>
+
+    <div class="grid-even">
+      <div class="panel">
+        <h2>Income by Type</h2>
+        <div id="dashIncomeTypes"></div>
+      </div>
+      <div class="panel">
+        <h2>Savings &amp; Investing by Account</h2>
+        <div id="dashAccountTypes"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Expenses by Category</h2>
+      <div id="dashExpenseCategories"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Estimated AGI</h2>
+      <div id="dashAgi"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Net Worth Trend</h2>
+      <div id="nwChart"></div>
+    </div>
+  </div><!-- /dashView -->
+
+  <div id="aiView" hidden>
+    <div class="ai-header">
+      <div class="date-range-selector">
+        <label for="aiDateRange" style="font-size:13px">Date range:</label>
+        <select id="aiDateRange" style="flex: none; width: auto;">
+          <option value="3">Last 3 months</option>
+          <option value="6" selected>Last 6 months</option>
+          <option value="ytd">Year to date</option>
+          <option value="all">All time</option>
+        </select>
+        <span class="muted small" id="aiTokenEstimate"></span>
+      </div>
+      <div class="api-status muted" id="aiApiStatus" style="font-size:13px">
+        <span id="aiKeyStatus">No API key</span>
+        <button type="button" class="link-btn" id="aiSetupKey" style="padding:0 4px">Setup</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Insights</h2>
+      <div id="aiInsightsPanel" class="ai-insights-panel">
+        <div class="muted small">Click "Generate" to analyze your finances with AI.</div>
+      </div>
+      <button type="button" class="add-btn" id="aiInsightsRefresh" style="align-self: flex-start;">Generate</button>
+    </div>
+
+    <div class="panel">
+      <h2>Ask Claude</h2>
+      <div class="ai-chat-container">
+        <div id="aiChatMessages" class="ai-chat-messages"></div>
+        <div class="ai-chat-input-area">
+          <textarea id="aiChatInput" placeholder="Ask about your spending, savings, trends..." style="margin:0"></textarea>
+          <button type="button" class="add-btn" id="aiChatSend" style="align-self: flex-end;">Send</button>
+        </div>
+      </div>
+      <button type="button" class="link-btn" id="aiChatClear" style="margin-top:8px; font-size:12px">Clear chat</button>
+    </div>
+  </div><!-- /aiView -->
+
+  <div class="panel">
+    <h2>Backup &amp; Restore</h2>
+    <p class="muted small" style="margin:-4px 0 12px">Your data is saved only in this browser on this computer — a different browser, a different computer, or reformatting this one will not have it. <strong>Export a backup file</strong> and keep it somewhere safe (for example your Google Drive folder). You can <strong>import</strong> that file to restore your data, or to load it into another browser or computer.</p>
+    <div class="backup-actions">
+      <button type="button" class="add-btn" id="exportBtn">⬇ Export backup</button>
+      <button type="button" class="btn-secondary" id="importBtn">⬆ Import backup</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+    <div class="error" id="importError" hidden></div>
+    <div class="small ok-text" id="importStatus" hidden style="margin-top:8px"></div>
+  </div>
+
+  <p class="muted footnote">Data is stored in this browser only. Export a backup regularly so you don't lose it.</p>
+</div>
+
+<datalist id="categoryList"></datalist>
+
+<script>
+'use strict';
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const fmtMoney = (n) => usd.format(n);
+const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const fmtMoney0 = (n) => usd0.format(n);
+const fmtPct = (n) => (n * 100).toFixed(1) + '%';
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+const pad = (n) => String(n).padStart(2, '0');
+const todayISO = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const currentMonth = () => todayISO().slice(0, 7);
+function shiftMonth(month, delta) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+}
+function monthLabel(month) {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+function fmtDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+const txTotal = (t) => t.splits ? t.splits.reduce((s, x) => s + x.amount, 0) : t.amount;
+const parseAmt = (v) => { const n = Math.round(parseFloat(v) * 100) / 100; return Number.isFinite(n) && n > 0 ? n : null; };
+const parseAmt0 = (v) => { const n = Math.round(parseFloat(v) * 100) / 100; return Number.isFinite(n) && n >= 0 ? n : null; };
+// Savings/Investing amounts: negative means money pulled back out of that bucket.
+const parseAmtSigned = (v) => { const n = Math.round(parseFloat(v) * 100) / 100; return Number.isFinite(n) && n !== 0 ? n : null; };
+
+const TYPE_LABELS = { fixed: 'Fixed Cost', spending: 'Spending', savings: 'Savings', investing: 'Investing' };
+const GROUP_LABELS = { fixed: 'Fixed Costs', spending: 'Spending', savings: 'Savings', investing: 'Investing' };
+const TYPE_COLORS = { fixed: '#b45309', spending: '#f43f5e', savings: '#15803d', investing: '#8b5cf6' };
+const LEFTOVER_COLOR = '#64748b';
+const DEFAULT_CATEGORIES = ['Rent/Mortgage', 'Utilities', 'Insurance', 'Subscriptions', 'Phone', 'Internet', 'Groceries', 'Dining Out', 'Transportation', 'Gas', 'Health', 'Entertainment', 'Shopping', 'Personal Care', 'Travel', 'Gifts', 'Other'];
+const DEFAULT_SET = new Set(DEFAULT_CATEGORIES);
+// Savings/Investing account tags. `pretax` contributions reduce AGI; the rest are
+// made with after-tax money. Order here is the order shown in the form and dashboard.
+const ACCOUNT_TAGS = [
+  { id: 'Savings',         pretax: false },
+  { id: '401(k)',          pretax: true  },
+  { id: '403(b)',          pretax: true  },
+  { id: 'Brokerage',       pretax: false },
+  { id: 'Roth IRA',        pretax: false },
+  { id: 'Traditional IRA', pretax: true  },
+  { id: 'HSA',             pretax: true  },
+  { id: 'ESPP',            pretax: false },
+];
+const ACCOUNT_TAG_IDS = ACCOUNT_TAGS.map((a) => a.id);
+const ACCOUNT_TAG_SET = new Set(ACCOUNT_TAG_IDS);
+const isPretaxAccount = (id) => !!(ACCOUNT_TAGS.find((a) => a.id === id) || {}).pretax;
+const ACCOUNT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+
+// Map a legacy free-text account name onto one of the tags above.
+function inferAccountTag(name) {
+  const n = String(name || '').toLowerCase();
+  if (n.includes('401')) return '401(k)';
+  if (n.includes('403')) return '403(b)';
+  if (n.includes('roth')) return 'Roth IRA';
+  if (n.includes('traditional') || /\btrad\b/.test(n)) return 'Traditional IRA';
+  if (n.includes('hsa') || n.includes('health savings')) return 'HSA';
+  if (n.includes('espp') || n.includes('stock purchase')) return 'ESPP';
+  if (n.includes('brokerage') || n.includes('taxable')) return 'Brokerage';
+  return 'Savings'; // emergency funds, bank savings, anything unrecognized
+}
+
+// Built-in categories, user-added ones, and any already used in a transaction.
+function allCategoryNames() {
+  const set = new Set(DEFAULT_CATEGORIES);
+  for (const c of data.categories) set.add(c);
+  for (const t of data.transactions) if (t.splits) for (const s of t.splits) set.add(s.category);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// ---------- state ----------
+const KEY = 'finance-app-data-v1';
+// An asset counts as liquid if its name mentions a cash-like account.
+const LIQUID_KEYWORDS = ['checking', 'savings', 'brokerage', 'cash management'];
+const inferLiquid = (name) => LIQUID_KEYWORDS.some((k) => String(name).toLowerCase().includes(k));
+
+// Income tax-type tags: earned (job), capital gains (stock sales), dividends,
+// interest (e.g. high-yield savings), not taxable (e.g. VA benefits).
+// All but `nontax` count toward AGI.
+const INCOME_TAX_LABELS = { earned: 'Earned', capital: 'Capital Gains', dividend: 'Dividend', interest: 'Interest', nontax: 'Not Taxable' };
+const INCOME_TAX_COLORS = { earned: '#2a78d6', capital: '#eb6834', dividend: '#1baf7a', interest: '#eda100', nontax: '#4a3aa7' };
+const INCOME_TAX_NEXT = { earned: 'capital', capital: 'dividend', dividend: 'interest', interest: 'nontax', nontax: 'earned' };
+const INCOME_TAX_IDS = ['earned', 'capital', 'dividend', 'interest', 'nontax'];
+const isTaxableIncome = (taxType) => taxType !== 'nontax';
+
+// Bring older data up to date: classify assets liquid/illiquid, default income
+// tax tags, and snap free-text account names onto the fixed account tags.
+// Returns true if anything changed. Runs on load AND on backup import.
+function migrateData(d) {
+  let migrated = false;
+  for (const a of d.assets) {
+    if (typeof a.liquid !== 'boolean') { a.liquid = inferLiquid(a.name); migrated = true; }
+  }
+  for (const i of d.incomes) {
+    if (!INCOME_TAX_LABELS[i.taxType]) { i.taxType = 'earned'; migrated = true; }
+  }
+  for (const t of d.transactions) {
+    if (t.account && !ACCOUNT_TAG_SET.has(t.account)) { t.account = inferAccountTag(t.account); migrated = true; }
+  }
+  return migrated;
+}
+
+function loadData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && Array.isArray(d.incomes) && Array.isArray(d.transactions)) {
+      if (!Array.isArray(d.categories)) d.categories = [];
+      if (!Array.isArray(d.assets)) d.assets = [];
+      if (!Array.isArray(d.liabilities)) d.liabilities = [];
+      if (migrateData(d)) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
+      return d;
+    }
+  } catch (e) { /* corrupted data falls through to a fresh start */ }
+  return { incomes: [], transactions: [], categories: [], assets: [], liabilities: [] };
+}
+let data = loadData();
+let month = currentMonth();
+let txType = 'spending';
+let view = 'income';        // 'income' | 'balance'
+let txFilterType = 'all';
+let txFilterCat = 'all';
+let editingId = null;       // transaction id currently being edited, or null
+const save = () => { localStorage.setItem(KEY, JSON.stringify(data)); scheduleDriveSave(); };
+
+// ---------- Google Drive sync ----------
+// Fill in after creating an OAuth Client ID in Google Cloud Console (Authorized JavaScript
+// origins = this site's URL, scope = drive.file). Until then, sync stays off and the app
+// behaves exactly as before (localStorage only).
+const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+const SYNC_ENABLED = GOOGLE_CLIENT_ID.indexOf('YOUR_CLIENT_ID') === -1;
+const DRIVE_FILE_NAME = 'my-finances-data.json';
+const DRIVE_FILEID_KEY = 'finance-app-drive-fileid';
+
+let driveAccessToken = null;
+let driveFileId = localStorage.getItem(DRIVE_FILEID_KEY) || null;
+let driveTokenClient = null;
+let saveDebounceTimer = null;
+
+function setSyncStatus(state) {
+  const el = $('syncStatus');
+  if (!el) return;
+  const label = { syncing: 'Syncing…', synced: 'Synced', error: 'Sync failed', offline: 'Not syncing' };
+  if (!label[state]) { el.hidden = true; return; }
+  el.hidden = false;
+  el.classList.toggle('err', state === 'error');
+  el.textContent = label[state];
+}
+
+// Debounces rapid edits into one Drive write instead of one per keystroke.
+function scheduleDriveSave() {
+  if (!SYNC_ENABLED || !driveAccessToken) return;
+  clearTimeout(saveDebounceTimer);
+  setSyncStatus('syncing');
+  saveDebounceTimer = setTimeout(() => saveToDrive(data), 2000);
+}
+
+function requestDriveAccess(silent) {
+  return new Promise((resolve) => {
+    driveTokenClient.callback = (resp) => resolve(!resp.error);
+    driveTokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+  });
+}
+
+// Wraps fetch with the Drive bearer token; transparently re-prompts once if the token expired.
+async function driveFetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...(options.headers || {}), Authorization: 'Bearer ' + driveAccessToken },
+  });
+  if (res.status === 401) {
+    const ok = await requestDriveAccess(true);
+    if (!ok) throw new Error('drive-auth-expired');
+    return driveFetch(url, options);
+  }
+  return res;
+}
+
+async function findOrCreateDriveFile() {
+  if (driveFileId) return driveFileId;
+  const q = encodeURIComponent("name='" + DRIVE_FILE_NAME + "' and trashed=false");
+  const listRes = await driveFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&spaces=drive&fields=files(id,name)');
+  const list = await listRes.json();
+  if (list.files && list.files.length) {
+    driveFileId = list.files[0].id;
+  } else {
+    const createRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: DRIVE_FILE_NAME }),
+    });
+    const created = await createRes.json();
+    driveFileId = created.id;
+    await saveToDrive(data); // seed the new Drive file with this device's current data
+  }
+  localStorage.setItem(DRIVE_FILEID_KEY, driveFileId);
+  return driveFileId;
+}
+
+async function loadFromDrive() {
+  await findOrCreateDriveFile();
+  const res = await driveFetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media');
+  if (!res.ok) throw new Error('drive-load-failed');
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function saveToDrive(payload) {
+  if (!driveFileId) return;
+  try {
+    const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + driveFileId + '?uploadType=media', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('drive-save-failed');
+    setSyncStatus('synced');
+  } catch (e) {
+    setSyncStatus('error');
+  }
+}
+
+async function afterSignIn() {
+  $('signinGate').hidden = true;
+  try {
+    const remote = await loadFromDrive();
+    if (remote && Array.isArray(remote.incomes) && Array.isArray(remote.transactions)) {
+      data = remote;
+      if (!Array.isArray(data.categories)) data.categories = [];
+      if (!Array.isArray(data.assets)) data.assets = [];
+      if (!Array.isArray(data.liabilities)) data.liabilities = [];
+      migrateData(data);
+      localStorage.setItem(KEY, JSON.stringify(data));
+      render();
+    }
+    setSyncStatus('synced');
+  } catch (e) {
+    setSyncStatus('error');
+  }
+}
+
+async function initDriveSync() {
+  if (!SYNC_ENABLED) return; // no client ID configured yet — stay local-only, as before
+  driveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: () => {}, // overridden per-call by requestDriveAccess()
+  });
+
+  $('googleSignInBtn').addEventListener('click', async () => {
+    $('signinError').hidden = true;
+    const ok = await requestDriveAccess(false);
+    if (!ok) { $('signinError').textContent = 'Sign-in failed. Try again.'; $('signinError').hidden = false; return; }
+    afterSignIn();
+  });
+  $('skipSyncBtn').addEventListener('click', () => { $('signinGate').hidden = true; setSyncStatus('offline'); });
+
+  // Try a silent sign-in first, in case this browser already granted access this session.
+  const silentOk = await requestDriveAccess(true).catch(() => false);
+  if (silentOk) afterSignIn();
+  else $('signinGate').hidden = false;
+}
+
+// ---------- AI Analysis state ----------
+let aiInsightsGenerated = false;
+let aiChatHistory = [];
+// 'ytd' = January through the current month; 'all' = everything ever entered.
+const aiRangeMonthCount = (range) =>
+  range === 'all' ? 1000 :
+  range === 'ytd' ? new Date().getMonth() + 1 :
+  parseInt(range, 10);
+
+// ---------- AI Analysis functions ----------
+async function callClaudeAPI(query, dataContext, onChunk, maxTokens = 500, history = [], effort = 'medium') {
+  const apiKey = sessionStorage.getItem('claude-api-key');
+  if (!apiKey) throw new Error('API key not found. Please enter it in the API key setup.');
+
+  const systemPrompt = buildSystemPrompt();
+  const userMessage = formatUserQuery(query, dataContext);
+  // Prior chat turns (plain text, no data blob) so follow-up questions have context.
+  const messages = [
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user', content: userMessage }
+  ];
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        // Required for calling the Anthropic API directly from a browser page.
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        // Sonnet 5 counts thinking against max_tokens, so these budgets are sized
+        // to leave room for it — too small and the answer truncates mid-sentence.
+        max_tokens: maxTokens,
+        thinking: { type: 'adaptive' },
+        output_config: { effort },
+        stream: true,
+        system: systemPrompt,
+        messages
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'API request failed');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const event = JSON.parse(line.slice(6));
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            onChunk(event.delta.text);
+          } else if (event.type === 'error') {
+            // Anthropic can emit an error event mid-stream (e.g. overloaded).
+            throw new Error(event.error?.message || 'Streaming error');
+          }
+        }
+      }
+    }
+  } catch (error) {
+    throw new Error(`Claude API error: ${error.message}`);
+  }
+}
+
+function buildSystemPrompt() {
+  return `You are a personal financial analyst with expertise in budgeting and spending patterns.
+You have access to the user's financial data and can provide insights on their spending, savings, and trends.
+
+DATA FORMAT — the payload has "dateRangeCovered" (which months you were given),
+"months" (per-month detail), "currentBalanceSheet" (itemized balances as of the
+latest month with data), and "yearToDate" (tax totals for the current year).
+
+DATE RANGE — ALWAYS CHECK THIS FIRST. dateRangeCovered.monthsIncluded lists
+exactly which months are in "months" — driven by the date-range dropdown in the
+app (e.g. "Last 6 months"), not by what the user actually has entered. If the
+user asks about a month that is NOT in monthsIncluded, that month's data was
+never sent to you — you have no idea whether it's empty or not. Never say "no
+data", "$0", or imply the app lacks it. Instead say plainly that month falls
+outside the currently selected range (name dateRangeCovered.firstMonth to
+lastMonth) and tell them to pick a wider range — Year to Date or All Time — in
+the dropdown above the chat to include it. This applies to every month
+individually, not just the edges: e.g. if asked about Jan–Jul but
+monthsIncluded only starts in March, say January and February are outside the
+range, don't answer for them, and still answer normally for March onward.
+
+Each month object contains:
+- income: total income; incomeByType splits it into earned (job), capital (stock sales), dividend, interest (e.g. high-yield savings), nontax (e.g. VA benefits, not taxable)
+- fixedCosts: total of fixed-cost transactions; fixedCostsByCategory itemizes them
+- spending: total discretionary spending; spendingByCategory itemizes it
+- totalExpenses = fixedCosts + spending
+- savings / investing: money MOVED INTO those buckets that month, i.e. cash flow, not balances (negative = pulled back out)
+- savingsInvestingByAccount: that same monthly flow broken out by account tag
+- leftOver = income - totalExpenses - savings - investing
+- Balance sheet for that month: totalAssets, liquidAssets, illiquidAssets,
+  totalLiabilities, netWorth (= totalAssets - totalLiabilities), and
+  liquidNetWorth (= liquidAssets - totalLiabilities). These are null when no
+  balance-sheet data was entered for that month — null means unknown, not zero.
+- Negative category amounts are reimbursements/refunds that reduce that category
+
+FLOWS VS BALANCES — do not confuse these:
+- savings / investing / savingsInvestingByAccount are monthly CONTRIBUTIONS (flow).
+- currentBalanceSheet and the per-month asset/liability fields are BALANCES (stock).
+A question about net worth, liquid net worth, or what someone "has" is about
+balances — answer from currentBalanceSheet, never from contribution flows.
+
+INCOME IS NOT CONTRIBUTIONS — these are separate numbers that often appear in the
+same month and are easy to mix up:
+- incomeByType.capital is capital-gains INCOME received (e.g. proceeds of a stock sale).
+- savingsInvestingByAccount.Brokerage is money CONTRIBUTED to a brokerage account.
+These are different quantities with different values. Never describe one using the
+other's amount. When you cite a figure, say which it is ("$X of capital-gains
+income", "$Y contributed to Brokerage").
+
+DO NOT INVENT CAUSAL LINKS. The data records amounts, not what funded what. You
+cannot tell from it that a contribution came from a particular income source. Do
+not write things like "the brokerage contribution from your capital gains". If a
+relationship seems likely, mark it as a possibility and give both real figures
+separately — or just leave it out.
+
+currentBalanceSheet contains the itemized accounts: liquidAssets[] and
+illiquidAssets[] (each with name and amount), liabilities[], their totals,
+netWorth, liquidNetWorth, and netWorthMinusLiquidNetWorth (the gap between the
+two, which equals total illiquid assets). Liquid = cash-like accounts the user
+could tap quickly; illiquid = things that take time to sell (car, home). When
+asked about the gap between net worth and liquid net worth, name the specific
+illiquid assets that make it up.
+
+ACCOUNTS AND TAXES:
+- Pre-tax accounts (contributions reduce AGI): 401(k), 403(b), Traditional IRA, HSA
+- After-tax accounts (no AGI reduction): Savings, Brokerage, Roth IRA, ESPP
+- Taxable income = earned + capital gains + dividends + interest. "nontax" income is excluded.
+- Estimated AGI = taxable income − pre-tax contributions. The yearToDate object
+  provides these figures precomputed (taxableIncome, pretaxContributions, estimatedAgi).
+
+When asked about AGI, use the yearToDate numbers, show the arithmetic, and state
+plainly that it's a rough estimate — real AGI includes adjustments this app doesn't
+track (self-employment tax, student loan interest, HSA employer portion, deductions
+that aren't contributions, etc.). You are not a tax professional; don't present the
+figure as a filing-ready number.
+
+ANALYSIS GUIDELINES:
+1. Always cite specific months and dollar amounts when making claims
+2. Identify spending patterns, trends, and anomalies
+3. Highlight progress toward budget goals (fixed costs ≤60%, spending ≤10%, savings ≥5%, investing ≥25% of income)
+4. Provide actionable insights based on the data
+5. Keep responses concise but substantive (2-4 sentences normally)
+6. Be honest about data limitations`;
+}
+
+function formatUserQuery(query, dataContext) {
+  return `Financial Data Summary:\n${JSON.stringify(dataContext, null, 2)}\n\nUser Question: ${query}`;
+}
+
+function extractAndSummarizeData(months = 6) {
+  const monthsList = months === 1000 ? getAllMonths() : getRecentMonths(months);
+  const byMonth = {};
+
+  for (const m of monthsList) {
+    const monthTxs = data.transactions.filter(t => t.date.startsWith(m));
+    const monthIncs = data.incomes.filter(i => i.month === m);
+    const monthAssets = data.assets.filter(a => a.month === m);
+    const monthLiabs = data.liabilities.filter(l => l.month === m);
+
+    // Category breakdowns kept separate by type so the AI can answer
+    // "what are my fixed costs?" — a merged list loses that distinction.
+    const fixedByCategory = {};
+    const spendingByCategory = {};
+    for (const t of monthTxs) {
+      if (!t.splits) continue;
+      const target = t.type === 'fixed' ? fixedByCategory : spendingByCategory;
+      for (const s of t.splits) target[s.category] = (target[s.category] || 0) + s.amount;
+    }
+
+    const totals = { fixed: 0, spending: 0, savings: 0, investing: 0 };
+    for (const t of monthTxs) totals[t.type] += txTotal(t);
+
+    const totalIncome = monthIncs.reduce((s, i) => s + i.amount, 0);
+    const totalExpenses = totals.fixed + totals.spending;
+    const totalAssets = monthAssets.reduce((s, a) => s + a.amount, 0);
+    const totalLiabs = monthLiabs.reduce((s, l) => s + l.amount, 0);
+    const liquidAssets = monthAssets.filter((a) => a.liquid).reduce((s, a) => s + a.amount, 0);
+    const hasBalanceSheet = monthAssets.length > 0 || monthLiabs.length > 0;
+
+    // Income split by tax type. Every key is always present (0 when none), so the
+    // shape is identical each month and a missing type can't be misread.
+    const incomeByType = {};
+    for (const k of INCOME_TAX_IDS) incomeByType[k] = 0;
+    for (const i of monthIncs) {
+      const k = INCOME_TAX_LABELS[i.taxType] ? i.taxType : 'earned';
+      incomeByType[k] += i.amount;
+    }
+
+    // Savings + investing broken out by account tag, so the AI can tell a
+    // pre-tax 401(k) contribution from an after-tax brokerage deposit.
+    const byAccount = {};
+    for (const t of monthTxs) {
+      if (t.type !== 'savings' && t.type !== 'investing') continue;
+      const acct = ACCOUNT_TAG_SET.has(t.account) ? t.account : inferAccountTag(t.account);
+      byAccount[acct] = (byAccount[acct] || 0) + t.amount;
+    }
+
+    byMonth[m] = {
+      income: totalIncome,
+      incomeByType,
+      fixedCosts: totals.fixed,
+      spending: totals.spending,
+      totalExpenses,
+      savings: totals.savings,
+      investing: totals.investing,
+      savingsInvestingByAccount: byAccount,
+      leftOver: totalIncome - totalExpenses - totals.savings - totals.investing,
+      // Balance sheet. null (not 0) when no assets/liabilities were entered that
+      // month, so the AI doesn't read "no data" as "net worth is zero".
+      totalAssets: hasBalanceSheet ? totalAssets : null,
+      liquidAssets: hasBalanceSheet ? liquidAssets : null,
+      illiquidAssets: hasBalanceSheet ? totalAssets - liquidAssets : null,
+      totalLiabilities: hasBalanceSheet ? totalLiabs : null,
+      netWorth: hasBalanceSheet ? totalAssets - totalLiabs : null,
+      liquidNetWorth: hasBalanceSheet ? liquidAssets - totalLiabs : null,
+      fixedCostsByCategory: fixedByCategory,
+      spendingByCategory
+    };
+  }
+
+  // Itemized balance sheet for the most recent month that has one. Sent once
+  // (not per month) so "what makes up my liquid net worth?" is answerable
+  // without repeating near-identical asset lists for every month.
+  const latestBalanceMonth = [...monthsList].sort().reverse()
+    .find((m) => data.assets.some((a) => a.month === m) || data.liabilities.some((l) => l.month === m));
+  let balanceSheetDetail = null;
+  if (latestBalanceMonth) {
+    const bsAssets = data.assets.filter((a) => a.month === latestBalanceMonth);
+    const bsLiabs = data.liabilities.filter((l) => l.month === latestBalanceMonth);
+    const liquid = bsAssets.filter((a) => a.liquid);
+    const illiquid = bsAssets.filter((a) => !a.liquid);
+    const sum = (arr) => arr.reduce((s, e) => s + e.amount, 0);
+    balanceSheetDetail = {
+      month: latestBalanceMonth,
+      liquidAssets: liquid.map((a) => ({ name: a.name, amount: a.amount })),
+      illiquidAssets: illiquid.map((a) => ({ name: a.name, amount: a.amount })),
+      liabilities: bsLiabs.map((l) => ({ name: l.name, amount: l.amount })),
+      totalLiquidAssets: sum(liquid),
+      totalIlliquidAssets: sum(illiquid),
+      totalLiabilities: sum(bsLiabs),
+      netWorth: sum(bsAssets) - sum(bsLiabs),
+      liquidNetWorth: sum(liquid) - sum(bsLiabs),
+      // The gap between the two is exactly the illiquid assets.
+      netWorthMinusLiquidNetWorth: sum(illiquid)
+    };
+  }
+
+  // Year-to-date tax figures for the year being viewed — the AGI inputs, precomputed.
+  const year = month.slice(0, 4);
+  const tax = yearTaxPicture(year);
+  // Chronological order regardless of how monthsList was built — getAllMonths()
+  // returns newest-first, getRecentMonths() returns oldest-first.
+  const monthsChronological = [...monthsList].sort();
+  return {
+    // Tells the AI exactly which months it has — anything outside this list
+    // is outside the selected date range, not necessarily empty in the app.
+    dateRangeCovered: {
+      monthsIncluded: monthsChronological,
+      firstMonth: monthsChronological[0] || null,
+      lastMonth: monthsChronological[monthsChronological.length - 1] || null
+    },
+    months: byMonth,
+    currentBalanceSheet: balanceSheetDetail,
+    yearToDate: {
+      year,
+      incomeByType: tax.byTax,
+      savingsInvestingByAccount: tax.byAccount,
+      pretaxAccounts: ACCOUNT_TAG_IDS.filter(isPretaxAccount),
+      pretaxContributions: tax.pretaxContrib,
+      afterTaxContributions: tax.aftertaxContrib,
+      taxableIncome: tax.taxableIncome,
+      estimatedAgi: tax.estimatedAgi
+    }
+  };
+}
+
+function getRecentMonths(count) {
+  const months = [];
+  const d = new Date();
+  for (let i = 0; i < count; i++) {
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0');
+    months.unshift(`${y}-${m}`);
+    d.setMonth(d.getMonth() - 1);
+  }
+  return months;
+}
+
+function getAllMonths() {
+  const months = new Set();
+  for (const t of data.transactions) months.add(t.date.slice(0, 7));
+  for (const i of data.incomes) months.add(i.month);
+  for (const a of data.assets) months.add(a.month);
+  for (const l of data.liabilities) months.add(l.month);
+  return [...months].sort().reverse();
+}
+
+// ---------- token budget ----------
+// Rough estimate: ~4 characters per token for English/JSON text (no tokenizer available client-side).
+const AI_SYSTEM_PROMPT_TOKENS = 1100; // buildSystemPrompt() is roughly this size
+// Sonnet 5 has a 1M-token context, so this threshold is about cost, not capacity.
+const AI_TOKEN_WARN_THRESHOLD = 8000;
+const estimateTokens = (str) => Math.ceil(str.length / 4);
+
+function getTokenBudget(monthCount) {
+  const summaryData = extractAndSummarizeData(monthCount);
+  const dataTokens = estimateTokens(JSON.stringify(summaryData));
+  const totalTokens = AI_SYSTEM_PROMPT_TOKENS + dataTokens + 50; // +50 buffer for a typical question
+  return {
+    totalTokens,
+    monthsIncluded: Object.keys(summaryData.months).length,
+    firstMonth: summaryData.dateRangeCovered.firstMonth,
+    lastMonth: summaryData.dateRangeCovered.lastMonth
+  };
+}
+
+// Rough Claude Sonnet 5 pricing: $3 / 1M input, $15 / 1M output. Thinking is
+// billed as output, so a typical answer is assumed to be ~1200 output tokens.
+const AI_PRICE_IN_PER_MTOK = 3.00;
+const AI_PRICE_OUT_PER_MTOK = 15.00;
+const AI_TYPICAL_OUTPUT_TOKENS = 1200;
+function estimateCost(inputTokens) {
+  const dollars = (inputTokens / 1e6) * AI_PRICE_IN_PER_MTOK
+                + (AI_TYPICAL_OUTPUT_TOKENS / 1e6) * AI_PRICE_OUT_PER_MTOK;
+  return dollars < 0.01 ? '<$0.01' : '~$' + dollars.toFixed(2);
+}
+
+// e.g. "2026-03" -> "Mar 2026", so the covered range reads in plain English.
+const shortMonthLabel = (m) => {
+  const [y, mo] = m.split('-').map(Number);
+  return new Date(y, mo - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+};
+
+function updateTokenEstimate() {
+  const $est = $('aiTokenEstimate');
+  if (!$est) return;
+  const monthCount = aiRangeMonthCount($('aiDateRange').value);
+  const { totalTokens, monthsIncluded, firstMonth, lastMonth } = getTokenBudget(monthCount);
+  const cost = estimateCost(totalTokens);
+  const range = firstMonth
+    ? (firstMonth === lastMonth ? shortMonthLabel(firstMonth) : `${shortMonthLabel(firstMonth)} – ${shortMonthLabel(lastMonth)}`)
+    : 'no months';
+  $est.textContent = `Covers ${range} (${monthsIncluded} mo, ~${totalTokens.toLocaleString()} tokens) · ${cost}/query`;
+  $est.classList.toggle('error-text', totalTokens > AI_TOKEN_WARN_THRESHOLD);
+  if (totalTokens > AI_TOKEN_WARN_THRESHOLD) {
+    $est.textContent += ' — try a shorter range';
+  }
+}
+
+async function generateInsights() {
+  const $insights = $('aiInsightsPanel');
+  const dateRange = $('aiDateRange').value;
+  const monthCount = aiRangeMonthCount(dateRange);
+
+  if (!sessionStorage.getItem('claude-api-key')) {
+    $insights.innerHTML = '<div class="muted small">Add your Claude API key to generate insights — click <b>Setup</b> in the top-right corner of this view.</div>';
+    return;
+  }
+
+  $insights.innerHTML = '<div class="insights-loading">Analyzing your finances...</div>';
+
+  try {
+    const summaryData = extractAndSummarizeData(monthCount);
+    const query = `Provide a brief 4-point financial summary:
+1. Top 3 spending categories and amounts
+2. Savings trend (increasing or decreasing?)
+3. One interesting pattern or anomaly
+4. Progress vs. budget goals (60% fixed, 10% spending, 5% savings, 25% investing)
+
+Format as bullet points.`;
+
+    let insightsText = '';
+    // 'low' effort: this is a fixed 4-point format, not a task that needs deep
+    // cross-referencing, so more of max_tokens goes to visible text than thinking.
+    await callClaudeAPI(query, summaryData, (chunk) => {
+      insightsText += chunk;
+      $insights.innerHTML = '<div class="insights-content">' + esc(insightsText) + '</div>';
+    }, 3000, [], 'low');
+
+    aiInsightsGenerated = true;
+    sessionStorage.setItem('claude-insights', insightsText);
+  } catch (error) {
+    $insights.innerHTML = '<div class="insights-error">Error: ' + esc(error.message) + '</div>';
+  }
+}
+
+function renderChatHistory() {
+  const $chat = $('aiChatMessages');
+  $chat.innerHTML = aiChatHistory.map((msg, i) => {
+    const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `<div class="chat-message ${msg.role}">
+      <div class="chat-role">${msg.role === 'user' ? 'You' : 'Claude'}</div>
+      <div class="chat-text">${esc(msg.content)}</div>
+      <div class="chat-time">${time}</div>
+    </div>`;
+  }).join('');
+  $chat.scrollTop = $chat.scrollHeight;
+}
+
+function showAPIKeyModal(show = true) {
+  const modal = $('aiKeyModal');
+  if (show) {
+    modal.setAttribute('data-open', '');
+    $('aiKeyInput').value = '';
+    $('aiKeyInput').focus();
+  } else {
+    modal.removeAttribute('data-open');
+  }
+}
+
+function updateAPIKeyStatus() {
+  const hasKey = !!sessionStorage.getItem('claude-api-key');
+  const $status = $('aiKeyStatus');
+  const $statusContainer = $('aiApiStatus');
+  if (hasKey) {
+    $status.textContent = '✓ API key ready';
+    $statusContainer.classList.add('ready');
+  } else {
+    $status.textContent = 'No API key';
+    $statusContainer.classList.remove('ready');
+  }
+}
+
+// Add API key modal HTML
+function initializeAIModal() {
+  const modal = document.createElement('div');
+  modal.id = 'aiKeyModal';
+  modal.className = 'ai-key-modal';
+  modal.innerHTML = `
+    <div class="ai-key-dialog">
+      <h3>Claude API Key Setup</h3>
+      <p class="muted small">Enter your Claude API key. It will be stored only in this browser session and cleared when you close the browser.</p>
+      <div class="ai-key-warning">⚠️ Your API key is sensitive. Never share it. Your financial data is sent to Anthropic's API to generate insights.</div>
+      <input type="password" id="aiKeyInput" placeholder="sk-ant-..." style="font-family: monospace">
+      <div class="ai-key-buttons">
+        <button type="button" class="link-btn" id="aiKeyCancelBtn">Cancel</button>
+        <button type="button" class="add-btn" id="aiKeySaveBtn">Save Key</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Initialize AI Analysis on load
+function initializeAIAnalysis() {
+  initializeAIModal();
+  updateAPIKeyStatus();
+
+  // Restore insights from this browser session so switching tabs doesn't re-spend API calls.
+  const cachedInsights = sessionStorage.getItem('claude-insights');
+  if (cachedInsights) {
+    $('aiInsightsPanel').innerHTML = '<div class="insights-content">' + esc(cachedInsights) + '</div>';
+    aiInsightsGenerated = true;
+  }
+
+  // Restore this session's chat conversation.
+  try { aiChatHistory = JSON.parse(sessionStorage.getItem('claude-chat')) || []; }
+  catch (e) { aiChatHistory = []; }
+  if (aiChatHistory.length) renderChatHistory();
+
+  $('aiSetupKey').addEventListener('click', () => showAPIKeyModal(true));
+  $('aiKeyCancelBtn').addEventListener('click', () => showAPIKeyModal(false));
+  $('aiKeySaveBtn').addEventListener('click', () => {
+    const key = $('aiKeyInput').value.trim();
+    if (key.startsWith('sk-ant-')) {
+      sessionStorage.setItem('claude-api-key', key);
+      updateAPIKeyStatus();
+      showAPIKeyModal(false);
+    } else {
+      alert('Invalid API key format. Must start with sk-ant-');
+    }
+  });
+
+  // Changing the range only updates the cost estimate — it never re-queries on
+  // its own. Insights regenerate only via the "Generate" button, since a stale
+  // panel from the old range is a fair trade for not spending money silently.
+  $('aiDateRange').addEventListener('change', updateTokenEstimate);
+  $('aiInsightsRefresh').addEventListener('click', generateInsights);
+  updateTokenEstimate();
+
+  $('aiChatSend').addEventListener('click', sendChatMessage);
+  $('aiChatInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+  $('aiChatClear').addEventListener('click', () => {
+    aiChatHistory = [];
+    sessionStorage.removeItem('claude-chat');
+    renderChatHistory();
+  });
+}
+
+const saveChatHistory = () => sessionStorage.setItem('claude-chat', JSON.stringify(aiChatHistory));
+const AI_CHAT_CONTEXT_TURNS = 10; // cap prior turns sent to the API to bound token use
+
+let aiChatBusy = false;
+async function sendChatMessage() {
+  if (aiChatBusy) return;
+  const query = $('aiChatInput').value.trim();
+  if (!query) return;
+
+  if (!sessionStorage.getItem('claude-api-key')) {
+    showAPIKeyModal(true);
+    return;
+  }
+
+  // Prior completed turns (before this message) give Claude conversation memory.
+  const history = aiChatHistory
+    .filter((m) => !m.content.startsWith('Error:'))
+    .slice(-AI_CHAT_CONTEXT_TURNS);
+
+  aiChatHistory.push({ role: 'user', content: query, timestamp: new Date().toISOString() });
+  const reply = { role: 'assistant', content: '…', timestamp: new Date().toISOString() };
+  aiChatHistory.push(reply);
+  renderChatHistory();
+  $('aiChatInput').value = '';
+  aiChatBusy = true;
+  $('aiChatSend').disabled = true;
+
+  try {
+    const summaryData = extractAndSummarizeData(aiRangeMonthCount($('aiDateRange').value));
+    let response = '';
+    await callClaudeAPI(query, summaryData, (chunk) => {
+      response += chunk;
+      reply.content = response;   // live-update the assistant bubble while streaming
+      renderChatHistory();
+    }, 3500, history, 'medium');
+    reply.content = response || '(no response)';
+  } catch (error) {
+    reply.content = 'Error: ' + error.message;
+  } finally {
+    reply.timestamp = new Date().toISOString();
+    aiChatBusy = false;
+    $('aiChatSend').disabled = false;
+    renderChatHistory();
+    saveChatHistory();
+    $('aiChatInput').focus();
+  }
+}
+
+// ---------- monthly picture ----------
+function monthPicture() {
+  const incomes = data.incomes.filter((i) => i.month === month);
+  const txs = data.transactions.filter((t) => t.date.startsWith(month));
+  const totals = { fixed: 0, spending: 0, savings: 0, investing: 0 };
+  for (const t of txs) totals[t.type] += txTotal(t);
+  const totalIncome = incomes.reduce((s, i) => s + i.amount, 0);
+  const totalExpenses = totals.fixed + totals.spending;
+  const leftOver = totalIncome - totalExpenses - totals.savings - totals.investing;
+  const byCategory = new Map();
+  for (const t of txs) {
+    if (!t.splits) continue;
+    for (const s of t.splits) byCategory.set(s.category, (byCategory.get(s.category) || 0) + s.amount);
+  }
+  return { incomes, txs, totals, totalIncome, totalExpenses, leftOver, byCategory };
+}
+
+// ---------- rendering ----------
+function render() {
+  const p = monthPicture();
+
+  // Dashboard is year-scoped: the header shows just the year and the arrows step by year.
+  const isDash = view === 'dashboard';
+  $('monthLabel').textContent = isDash ? month.slice(0, 4) : monthLabel(month);
+  $('backToCurrent').textContent = isDash ? 'Back to current year' : 'Back to current month';
+  $('backToCurrent').hidden = isDash
+    ? month.slice(0, 4) === currentMonth().slice(0, 4)
+    : month === currentMonth();
+  $('prevMonth').setAttribute('aria-label', isDash ? 'Previous year' : 'Previous month');
+  $('nextMonth').setAttribute('aria-label', isDash ? 'Next year' : 'Next month');
+
+  $('sumIncome').textContent = fmtMoney0(p.totalIncome);
+  $('sumExpenses').textContent = fmtMoney0(p.totalExpenses);
+  const savedTotal = p.totals.savings + p.totals.investing;
+  const saved = $('sumSaved');
+  saved.textContent = fmtMoney0(savedTotal);
+  saved.classList.toggle('red', savedTotal < 0);
+  const left = $('sumLeft');
+  left.textContent = fmtMoney0(p.leftOver);
+  left.classList.toggle('red', p.leftOver < 0);
+  left.classList.toggle('green', p.leftOver >= 0);
+  const note = $('overspentNote');
+  note.hidden = p.leftOver >= 0;
+  if (p.leftOver < 0) note.textContent = 'Overspent by ' + fmtMoney0(-p.leftOver);
+
+  renderIncome(p);
+  renderPie(p);
+  renderCategories(p);
+  renderTransactions(p);
+  renderDatalists();
+  renderCategoryManager();
+  renderBalance();
+  renderDashboard();
+  if (typeof updateTokenEstimate === 'function' && $('aiTokenEstimate')) updateTokenEstimate();
+}
+
+function renderIncome(p) {
+  const box = $('incomeList');
+  if (p.incomes.length === 0) {
+    box.innerHTML = '<div class="empty">No income entered for this month.</div>';
+  } else {
+    box.innerHTML = p.incomes.map((i) => {
+      const tt = INCOME_TAX_LABELS[i.taxType] ? i.taxType : 'earned';
+      const tc = INCOME_TAX_COLORS[tt];
+      return '<div class="income-row"><span>' + esc(i.name) + '</span>' +
+      '<button type="button" class="badge tax-badge" data-cycle-income="' + i.id + '" style="color:' + tc + ';background:' + tc + '22" title="Income type — click to change">' + INCOME_TAX_LABELS[tt] + '</button>' +
+      '<span class="amount">' + fmtMoney(i.amount) + '</span>' +
+      '<button class="remove-btn" data-del-income="' + i.id + '" title="Delete">✕</button></div>';
+    }).join('') +
+    '<div class="income-row total"><span>Total</span><span class="amount">' + fmtMoney(p.totalIncome) + '</span><span class="spacer"></span></div>';
+  }
+  const prevHasIncome = data.incomes.some((i) => i.month === shiftMonth(month, -1));
+  $('copyIncome').hidden = !(p.incomes.length === 0 && prevHasIncome);
+}
+
+const CAT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948', '#0891b2', '#a16207', '#9333ea', '#be185d', '#86198f', '#b45309', '#0d9488'];
+
+// Pie of income by type. Slices with value <= 0 stay in the legend (with their true
+// value) but can't be drawn as wedges, so the circle is built from positive values only.
+function pieChartHTML(slices, base, noteHtml) {
+  const geo = slices.filter((s) => s.value > 0);
+  const geoTotal = geo.reduce((s, x) => s + x.value, 0);
+  let svg = '';
+  if (geo.length === 1) {
+    svg = '<circle cx="100" cy="100" r="90" fill="' + geo[0].color + '"/>';
+  } else if (geo.length > 1) {
+    const TAU = Math.PI * 2;
+    let acc = 0;
+    svg = geo.map((s) => {
+      const a0 = (acc / geoTotal) * TAU - Math.PI / 2;
+      acc += s.value;
+      const a1 = (acc / geoTotal) * TAU - Math.PI / 2;
+      const x0 = 100 + 90 * Math.cos(a0), y0 = 100 + 90 * Math.sin(a0);
+      const x1 = 100 + 90 * Math.cos(a1), y1 = 100 + 90 * Math.sin(a1);
+      const large = (a1 - a0) > Math.PI ? 1 : 0;
+      return '<path d="M 100 100 L ' + x0 + ' ' + y0 + ' A 90 90 0 ' + large + ' 1 ' + x1 + ' ' + y1 + ' Z" fill="' + s.color + '" stroke="var(--card)" stroke-width="1.5"/>';
+    }).join('');
+  }
+  const legend = slices.map((s) =>
+    '<div class="legend-row"><span class="dot" style="background:' + s.color + '"></span>' +
+    '<span class="name">' + esc(s.label) + '</span>' +
+    '<span class="muted">' + fmtMoney(s.value) + '</span>' +
+    '<span class="pct"' + (s.pctColor ? ' style="color:' + s.pctColor + '"' : '') + '>' + fmtPct(base !== 0 ? s.value / base : 0) + '</span></div>'
+  ).join('');
+  const svgHtml = svg ? '<svg viewBox="0 0 200 200" width="185" height="185" role="img" aria-label="Income breakdown">' + svg + '</svg>' : '';
+  return '<div class="pie-wrap">' + svgHtml + '<div class="legend">' + legend + noteHtml + '</div></div>';
+}
+
+// Horizontal bars: y-axis = category/type, x-axis = dollar amount. Bars grow right
+// from a zero baseline, or left when a value is negative. The negative half of the
+// axis (and the zero line) only appears at all when some value actually needs it.
+function barChartHTML(slices, base, noteHtml) {
+  const values = slices.map((s) => s.value);
+  const domainMin = Math.min(0, ...values);
+  const domainMax = Math.max(0, ...values);
+  const range = (domainMax - domainMin) || 1;
+  const zeroPct = ((0 - domainMin) / range) * 100;
+  const showZeroLine = domainMin < 0;
+
+  const rows = slices.map((s) => {
+    const startPct = ((Math.min(s.value, 0) - domainMin) / range) * 100;
+    const endPct = ((Math.max(s.value, 0) - domainMin) / range) * 100;
+    const negative = s.value < 0;
+    const radius = negative ? '4px 0 0 4px' : '0 4px 4px 0';
+    const fill = s.value !== 0
+      ? '<div class="bar-fill" style="left:' + startPct + '%;width:' + (endPct - startPct) + '%;background:' + s.color + ';border-radius:' + radius + '"></div>'
+      : '';
+    return '<div class="bar-row">' +
+      '<div class="bar-label" title="' + esc(s.label) + '">' + esc(s.label) + '</div>' +
+      '<div class="bar-track">' + (showZeroLine ? '<div class="bar-zero" style="left:' + zeroPct + '%"></div>' : '') + fill + '</div>' +
+      '<div class="bar-value">' +
+        '<span class="muted">' + fmtMoney(s.value) + '</span>' +
+        '<span class="pct"' + (s.pctColor ? ' style="color:' + s.pctColor + '"' : '') + '>' + fmtPct(base !== 0 ? s.value / base : 0) + '</span>' +
+      '</div></div>';
+  }).join('');
+  return '<div class="bar-chart">' + rows + '</div>' + noteHtml;
+}
+
+// Budget goals as a share of income. max = "should stay under"; min = "should be at least".
+const GOALS = { fixed: { max: 0.60 }, spending: { max: 0.10 }, savings: { min: 0.05 }, investing: { min: 0.25 } };
+function goalColor(type, frac) {
+  const g = GOALS[type];
+  if (!g) return null;
+  const ok = g.max !== undefined ? frac < g.max : frac >= g.min;
+  return ok ? 'var(--green)' : 'var(--red)';
+}
+
+function renderPie(p) {
+  const hasIncome = p.totalIncome > 0;
+  const outflow = p.totalExpenses + p.totals.savings + p.totals.investing;
+  const base = hasIncome ? p.totalIncome : outflow;
+
+  // Show all four goal buckets (even at $0, or negative if savings/investing were
+  // pulled from) so their goal status is always visible in the legend.
+  const slices = [];
+  for (const k of ['fixed', 'spending', 'savings', 'investing']) {
+    if (!hasIncome && p.totals[k] === 0) continue;
+    slices.push({ label: GROUP_LABELS[k], value: p.totals[k], color: TYPE_COLORS[k], type: k });
+  }
+  if (hasIncome && p.leftOver > 0) slices.push({ label: 'Left Over', value: p.leftOver, color: LEFTOVER_COLOR });
+  // Goal coloring only when percentages are true shares of income (not overspent).
+  if (hasIncome && p.leftOver >= 0) {
+    for (const s of slices) if (s.type) s.pctColor = goalColor(s.type, base > 0 ? s.value / base : 0);
+  }
+  let note = '';
+  if (!hasIncome) note = '<div class="muted small">No income entered — showing share of total outflow.</div>';
+  else if (p.leftOver < 0) note = '<div class="error-text small">Outflow exceeds income — percentages exceed 100%, so goal colors are hidden.</div>';
+  else note = '<div class="muted small">Goal check: Fixed ≤60%, Spending ≤10%, Savings ≥5%, Investing ≥25% — green means on target.</div>';
+  if (slices.some((s) => s.value < 0)) note += '<div class="muted small">Negative amounts (money pulled back out) are listed here but can\'t be drawn as pie slices.</div>';
+
+  if (!slices.length) {
+    $('pieArea').innerHTML = '<div class="empty">Add income and transactions to see the breakdown.</div>';
+    return;
+  }
+  $('pieArea').innerHTML = pieChartHTML(slices, base, note);
+}
+
+// Expenses (fixed costs + spending) split by category, as horizontal bars.
+function renderCategories(p) {
+  const rows = [...p.byCategory.entries()]
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount);
+  if (rows.length === 0) {
+    $('categoryArea').innerHTML = '<div class="empty">No expenses yet this month.</div>';
+    return;
+  }
+  const hasIncome = p.totalIncome > 0;
+  const base = hasIncome ? p.totalIncome : p.totalExpenses;
+  const slices = rows.map((r, i) => ({ label: r.category, value: r.amount, color: CAT_COLORS[i % CAT_COLORS.length] }));
+  let note = '<div class="muted small" style="margin-top:10px">Total: ' + fmtMoney(p.totalExpenses) +
+    (hasIncome ? ' — ' + fmtPct(p.totalExpenses / p.totalIncome) + ' of income' : '') + '</div>';
+  if (!hasIncome) note += '<div class="muted small">No income entered — percentages show share of expenses.</div>';
+  $('categoryArea').innerHTML = barChartHTML(slices, base, note);
+}
+
+function renderTransactions(p) {
+  // rebuild the category filter from categories present in this month's transactions
+  const monthCats = new Set();
+  for (const t of p.txs) if (t.splits) for (const s of t.splits) monthCats.add(s.category);
+  const catList = [...monthCats].sort((a, b) => a.localeCompare(b));
+  if (txFilterCat !== 'all' && !monthCats.has(txFilterCat)) txFilterCat = 'all';
+  $('filterCat').innerHTML = '<option value="all">All categories</option>' +
+    catList.map((c) => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('');
+  $('filterCat').value = txFilterCat;
+  $('filterType').value = txFilterType;
+
+  let txs = p.txs;
+  if (txFilterType !== 'all') txs = txs.filter((t) => t.type === txFilterType);
+  if (txFilterCat !== 'all') txs = txs.filter((t) => t.splits && t.splits.some((s) => s.category === txFilterCat));
+
+  if (p.txs.length === 0) {
+    $('txArea').innerHTML = '<div class="empty">No transactions yet this month. Add one above to get started.</div>';
+    return;
+  }
+  if (txs.length === 0) {
+    $('txArea').innerHTML = '<div class="empty">No transactions match these filters.</div>';
+    return;
+  }
+  const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
+  $('txArea').innerHTML =
+    '<table><thead><tr><th>Date</th><th>Type</th><th>Name</th><th>Category / Account</th><th class="num">Amount</th><th></th></tr></thead><tbody>' +
+    sorted.map((t) => {
+      const color = TYPE_COLORS[t.type];
+      let detail = '—', title = '';
+      if (t.splits) {
+        detail = esc(t.splits.map((s) => s.category).join(' · '));
+        if (t.splits.length > 1) {
+          detail += ' <span class="split-tag">split</span>';
+          title = esc(t.splits.map((s) => s.category + ': ' + fmtMoney(s.amount)).join(', '));
+        }
+        if (t.reimbursement) detail += ' <span class="split-tag reimb-tag">reimbursement</span>';
+      }
+      return '<tr>' +
+        '<td class="muted">' + fmtDate(t.date) + '</td>' +
+        '<td><span class="badge" style="color:' + color + ';background:' + color + '22">' + TYPE_LABELS[t.type] + '</span></td>' +
+        '<td>' + esc(t.business || t.account) + '</td>' +
+        '<td class="muted"' + (title ? ' title="' + title + '"' : '') + '>' + detail + '</td>' +
+        '<td class="num"' + (t.reimbursement ? ' style="color:var(--green)"' : '') + '>' + fmtMoney(txTotal(t)) + '</td>' +
+        '<td style="white-space:nowrap"><button class="edit-btn" data-edit-tx="' + t.id + '" title="Edit">✎</button><button class="remove-btn" data-del-tx="' + t.id + '" title="Delete">✕</button></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function renderDatalists() {
+  $('categoryList').innerHTML = allCategoryNames().map((c) => '<option value="' + esc(c) + '"></option>').join('');
+}
+
+function renderCategoryManager() {
+  const custom = new Set(data.categories);
+  $('categoryChips').innerHTML = allCategoryNames().map((name) => {
+    const removable = custom.has(name) && !DEFAULT_SET.has(name);
+    return '<span class="chip' + (removable ? ' custom' : '') + '">' + esc(name) +
+      (removable ? '<button type="button" class="chip-x" data-del-cat="' + esc(name) + '" title="Remove category">✕</button>' : '') +
+      '</span>';
+  }).join('');
+}
+
+// ---------- balance sheet ----------
+function sumEntries(list, m) {
+  return list.filter((e) => e.month === m).reduce((s, e) => s + e.amount, 0);
+}
+function sumLiquidAssets(m) {
+  return data.assets.filter((e) => e.month === m && e.liquid).reduce((s, e) => s + e.amount, 0);
+}
+
+// All the balance-sheet figures for the month currently being viewed.
+function balanceNumbers() {
+  const monthAssets = data.assets.filter((a) => a.month === month);
+  const liabs = data.liabilities.filter((l) => l.month === month);
+  const liquidAssets = monthAssets.filter((a) => a.liquid);
+  const illiquidAssets = monthAssets.filter((a) => !a.liquid);
+  const liquidTotal = liquidAssets.reduce((s, e) => s + e.amount, 0);
+  const totalAssets = monthAssets.reduce((s, e) => s + e.amount, 0);
+  const totalLiabs = liabs.reduce((s, e) => s + e.amount, 0);
+  return {
+    monthAssets, liabs, liquidAssets, illiquidAssets, liquidTotal, totalAssets, totalLiabs,
+    netWorth: totalAssets - totalLiabs,
+    liquidNetWorth: liquidTotal - totalLiabs,
+  };
+}
+
+function setBalanceTiles(b) {
+  $('sumAssets').textContent = fmtMoney0(b.totalAssets);
+  $('sumLiabs').textContent = fmtMoney0(b.totalLiabs);
+  const nwEl = $('sumNetWorth');
+  nwEl.textContent = fmtMoney0(b.netWorth);
+  nwEl.classList.toggle('red', b.netWorth < 0);
+  nwEl.classList.toggle('green', b.netWorth >= 0);
+  const lnwEl = $('sumLiquidNetWorth');
+  lnwEl.textContent = fmtMoney0(b.liquidNetWorth);
+  lnwEl.classList.toggle('red', b.liquidNetWorth < 0);
+  lnwEl.classList.toggle('green', b.liquidNetWorth >= 0);
+}
+
+function renderEntryList(boxId, entries, kind, totalId, emptyMsg) {
+  const box = $(boxId);
+  if (entries.length === 0) {
+    box.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
+    return;
+  }
+  const total = entries.reduce((s, e) => s + e.amount, 0);
+  const last = entries.length - 1;
+  box.innerHTML = entries.map((e, idx) =>
+    '<div class="entry-row">' +
+    '<span class="entry-name" title="' + esc(e.name) + '">' + esc(e.name) + '</span>' +
+    '<span class="entry-dollar">$</span>' +
+    '<input type="number" class="entry-amt" min="0" step="0.01" value="' + e.amount + '" data-edit-' + kind + '="' + e.id + '" aria-label="' + esc(e.name) + ' amount">' +
+    '<button type="button" class="move-btn" data-move-' + kind + '="' + e.id + '" data-dir="-1" title="Move up"' + (idx === 0 ? ' disabled' : '') + '>▲</button>' +
+    '<button type="button" class="move-btn" data-move-' + kind + '="' + e.id + '" data-dir="1" title="Move down"' + (idx === last ? ' disabled' : '') + '>▼</button>' +
+    '<button type="button" class="remove-btn" data-del-' + kind + '="' + e.id + '" title="Delete">✕</button></div>'
+  ).join('') +
+  '<div class="income-row total"><span>Total</span><span class="amount" id="' + totalId + '">' + fmtMoney0(total) + '</span><span class="spacer"></span></div>';
+}
+
+function moveEntry(listKey, id, dir) {
+  const list = data[listKey];
+  const moving = list.find((e) => e.id === id);
+  if (!moving) return;
+  // Reorder only within the same month and (for assets) the same liquid/illiquid group.
+  const inGroup = (e) => e.month === month && (listKey !== 'assets' || !!e.liquid === !!moving.liquid);
+  const groupIdxs = list.map((e, i) => (inGroup(e) ? i : -1)).filter((i) => i !== -1);
+  const pos = list.findIndex((e) => e.id === id);
+  const at = groupIdxs.indexOf(pos);
+  const target = at + dir;
+  if (at === -1 || target < 0 || target >= groupIdxs.length) return;
+  const a = groupIdxs[at], b = groupIdxs[target];
+  const tmp = list[a]; list[a] = list[b]; list[b] = tmp;
+  save();
+  render();
+}
+
+// Update one asset/liability amount in place, then refresh totals & chart
+// WITHOUT rebuilding the input rows (so tabbing between fields keeps working).
+function updateEntryAmount(listKey, id, raw, inputEl) {
+  const entry = data[listKey].find((e) => e.id === id);
+  if (!entry) return;
+  const n = parseAmt0(raw);
+  if (n === null) { inputEl.value = entry.amount; return; } // revert bad/empty/negative input
+  entry.amount = n;
+  inputEl.value = n;
+  save();
+  refreshBalanceTotals();
+}
+
+// Inline amount edits update totals without rebuilding the input rows (keeps focus/tab).
+function refreshBalanceTotals() {
+  const b = balanceNumbers();
+  setBalanceTiles(b);
+  const lqt = $('assetLiquidTotal'); if (lqt) lqt.textContent = fmtMoney0(b.liquidTotal);
+  const ilt = $('assetIlliquidTotal'); if (ilt) ilt.textContent = fmtMoney0(b.totalAssets - b.liquidTotal);
+  const lt = $('liabListTotal'); if (lt) lt.textContent = fmtMoney0(b.totalLiabs);
+  renderNetWorthChart();
+}
+
+function renderBalance() {
+  const b = balanceNumbers();
+  setBalanceTiles(b);
+
+  renderEntryList('assetLiquidList', b.liquidAssets, 'asset', 'assetLiquidTotal', 'No liquid assets this month.');
+  renderEntryList('assetIlliquidList', b.illiquidAssets, 'asset', 'assetIlliquidTotal', 'No illiquid assets this month.');
+  renderEntryList('liabList', b.liabs, 'liab', 'liabListTotal', 'No liabilities entered for this month.');
+
+  const prevMonth = shiftMonth(month, -1);
+  $('copyAssets').hidden = !(b.monthAssets.length === 0 && data.assets.some((a) => a.month === prevMonth));
+  $('copyLiabs').hidden = !(b.liabs.length === 0 && data.liabilities.some((l) => l.month === prevMonth));
+
+  renderNetWorthChart();
+}
+
+// Year totals used by both the Dashboard and the AI summary, including the
+// pre-tax/after-tax split needed for a rough AGI estimate.
+function yearTaxPicture(year) {
+  const yearIncomes = data.incomes.filter((i) => i.month.startsWith(year));
+  const byTax = {}; for (const k of INCOME_TAX_IDS) byTax[k] = 0;
+  for (const i of yearIncomes) byTax[INCOME_TAX_LABELS[i.taxType] ? i.taxType : 'earned'] += i.amount;
+
+  const byAccount = {};
+  for (const a of ACCOUNT_TAG_IDS) byAccount[a] = 0;
+  let pretaxContrib = 0, aftertaxContrib = 0;
+  for (const t of data.transactions) {
+    if (!t.date.startsWith(year)) continue;
+    if (t.type !== 'savings' && t.type !== 'investing') continue;
+    const acct = ACCOUNT_TAG_SET.has(t.account) ? t.account : inferAccountTag(t.account);
+    byAccount[acct] += t.amount;
+    if (isPretaxAccount(acct)) pretaxContrib += t.amount; else aftertaxContrib += t.amount;
+  }
+
+  const taxableIncome = INCOME_TAX_IDS.filter(isTaxableIncome).reduce((s, k) => s + byTax[k], 0);
+  return {
+    totalIncome: yearIncomes.reduce((s, i) => s + i.amount, 0),
+    byTax, byAccount, pretaxContrib, aftertaxContrib, taxableIncome,
+    estimatedAgi: taxableIncome - pretaxContrib,
+  };
+}
+
+// ---------- dashboard (year running totals) ----------
+function renderDashboard() {
+  const year = month.slice(0, 4);
+  const tax = yearTaxPicture(year);
+  const totalIncome = tax.totalIncome;
+  const byTax = tax.byTax;
+
+  const totals = { fixed: 0, spending: 0, savings: 0, investing: 0 };
+  for (const t of data.transactions) if (t.date.startsWith(year)) totals[t.type] += txTotal(t);
+
+  $('dashIncome').textContent = fmtMoney0(totalIncome);
+  $('dashFixed').textContent = fmtMoney0(totals.fixed);
+  $('dashExpenses').textContent = fmtMoney0(totals.fixed + totals.spending);
+  const ds = $('dashSavings');
+  ds.textContent = fmtMoney0(totals.savings);
+  ds.classList.toggle('red', totals.savings < 0);
+  const di = $('dashInvesting');
+  di.textContent = fmtMoney0(totals.investing);
+  di.classList.toggle('red', totals.investing < 0);
+
+  const anyIncome = totalIncome > 0;
+  const dot = (color) => '<span class="dot" style="width:10px;height:10px;border-radius:3px;flex:none;background:' + color + '"></span>';
+
+  $('dashIncomeTypes').innerHTML = INCOME_TAX_IDS.map((k) =>
+    '<div class="income-row">' + dot(INCOME_TAX_COLORS[k]) +
+    '<span>' + INCOME_TAX_LABELS[k] + '</span>' +
+    '<span class="amount">' + fmtMoney0(byTax[k]) + (anyIncome ? ' <span class="muted small">(' + fmtPct(byTax[k] / totalIncome) + ')</span>' : '') + '</span></div>'
+  ).join('') +
+  '<div class="income-row total"><span>Total</span><span class="amount">' + fmtMoney0(totalIncome) + '</span></div>' +
+  '<div class="muted small" style="margin-top:8px">' + year + ' totals from every month you\'ve entered. Tag income sources in the Income Statement.</div>';
+
+  // Savings & investing broken out by account, with the pre-tax subtotal that drives AGI.
+  const savedTotal = totals.savings + totals.investing;
+  $('dashAccountTypes').innerHTML = ACCOUNT_TAG_IDS.map((a, i) => {
+    const v = tax.byAccount[a];
+    const pct = savedTotal !== 0 ? ' <span class="muted small">(' + fmtPct(v / savedTotal) + ')</span>' : '';
+    return '<div class="income-row">' + dot(ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]) +
+      '<span>' + esc(a) + (isPretaxAccount(a) ? ' <span class="muted small">pre-tax</span>' : '') + '</span>' +
+      '<span class="amount' + (v < 0 ? ' red' : '') + '">' + fmtMoney0(v) + pct + '</span></div>';
+  }).join('') +
+  '<div class="income-row total"><span>Total</span><span class="amount' + (savedTotal < 0 ? ' red' : '') + '">' + fmtMoney0(savedTotal) + '</span></div>' +
+  '<div class="muted small" style="margin-top:8px">Pre-tax contributions (401(k), 403(b), Traditional IRA, HSA) lower your AGI. Negative means money pulled back out.</div>';
+
+  // Expenses by category for the year — fixed costs + spending combined, same
+  // categories the Income Statement's category chart uses, just summed across months.
+  const yearByCategory = new Map();
+  for (const t of data.transactions) {
+    if (!t.date.startsWith(year) || !t.splits) continue;
+    if (t.type !== 'fixed' && t.type !== 'spending') continue;
+    for (const s of t.splits) yearByCategory.set(s.category, (yearByCategory.get(s.category) || 0) + s.amount);
+  }
+  const catRows = [...yearByCategory.entries()].sort((a, b) => b[1] - a[1]);
+  const totalExpensesYear = catRows.reduce((s, [, v]) => s + v, 0);
+  if (catRows.length === 0) {
+    $('dashExpenseCategories').innerHTML = '<div class="empty">No fixed costs or spending entered for ' + year + ' yet.</div>';
+  } else {
+    $('dashExpenseCategories').innerHTML = catRows.map(([cat, v], i) => {
+      const pct = totalExpensesYear !== 0 ? ' <span class="muted small">(' + fmtPct(v / totalExpensesYear) + ')</span>' : '';
+      return '<div class="income-row">' + dot(CAT_COLORS[i % CAT_COLORS.length]) +
+        '<span>' + esc(cat) + '</span>' +
+        '<span class="amount' + (v < 0 ? ' red' : '') + '">' + fmtMoney0(v) + pct + '</span></div>';
+    }).join('') +
+    '<div class="income-row total"><span>Total</span><span class="amount">' + fmtMoney0(totalExpensesYear) + '</span></div>' +
+    '<div class="muted small" style="margin-top:8px">' + year + ' fixed costs + spending, combined across every month entered. Negative amounts are reimbursements/refunds.</div>';
+  }
+
+  // Rough AGI estimate: taxable income minus pre-tax contributions.
+  const agiRow = (label, value, opts) => {
+    const o = opts || {};
+    return '<div class="income-row' + (o.total ? ' total' : '') + '">' +
+      '<span>' + label + '</span>' +
+      '<span class="amount' + (o.red ? ' red' : '') + '">' + (o.negate ? '−' : '') + fmtMoney0(Math.abs(value)) + '</span></div>';
+  };
+  $('dashAgi').innerHTML =
+    agiRow('Earned', byTax.earned) +
+    agiRow('Capital Gains', byTax.capital) +
+    agiRow('Dividend', byTax.dividend) +
+    agiRow('Interest', byTax.interest) +
+    agiRow('Pre-tax contributions', tax.pretaxContrib, { negate: true }) +
+    agiRow('<b>Estimated AGI</b>', tax.estimatedAgi, { total: true, red: tax.estimatedAgi < 0 }) +
+    '<div class="muted small" style="margin-top:8px">Rough estimate only — taxable income (earned + capital gains + dividends + interest) minus pre-tax contributions. ' +
+    'Not-taxable income is excluded. Real AGI includes other adjustments (student loan interest, self-employment tax, etc.), so treat this as a ballpark, not a filing figure.</div>';
+}
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const NW_COLOR = '#2a78d6';   // total net worth line
+const LNW_COLOR = '#15803d';  // liquid net worth line
+
+function renderNetWorthChart() {
+  const box = $('nwChart');
+  const chartYear = month.slice(0, 4);
+  const present = new Set([...data.assets, ...data.liabilities].map((e) => e.month));
+  const nwOf = (key) => sumEntries(data.assets, key) - sumEntries(data.liabilities, key);
+  const lnwOf = (key) => sumLiquidAssets(key) - sumEntries(data.liabilities, key);
+
+  // X-axis columns: one collapsed point per prior year (its December value, or
+  // the latest month of that year that has data), then Jan..Dec of the year
+  // currently being viewed. Each column carries both series' values.
+  const yearsWithData = [...new Set([...present].map((k) => k.slice(0, 4)))];
+  const priorYears = yearsWithData.filter((y) => y < chartYear).sort();
+  const columns = [];
+  const colFor = (label, key, isYear) => ({ label, key, isYear, nw: nwOf(key), lnw: lnwOf(key) });
+  for (const y of priorYears) {
+    const decKey = y + '-12';
+    let key = decKey;
+    if (!present.has(decKey)) {
+      const monthsInY = [...present].filter((k) => k.slice(0, 4) === y).sort();
+      key = monthsInY[monthsInY.length - 1];
+    }
+    columns.push(colFor(y, key, true));
+  }
+  const firstMonthCol = columns.length;
+  for (let mi = 0; mi < 12; mi++) {
+    const key = chartYear + '-' + pad(mi + 1);
+    columns.push(present.has(key) ? colFor(MONTH_ABBR[mi], key, false) : { label: MONTH_ABBR[mi], key, isYear: false, nw: null, lnw: null });
+  }
+
+  const dataCols = columns.filter((c) => c.nw !== null);
+  if (dataCols.length === 0) {
+    box.innerHTML = '<div class="empty">No net worth data for ' + chartYear + ' yet. Add assets or liabilities and the trend will build across the months of the year.</div>';
+    return;
+  }
+
+  const W = 1000, H = 300, L = 72, R = 22, T = 18, B = 46;
+  const iw = W - L - R, ih = H - T - B;
+  const allVals = dataCols.flatMap((c) => [c.nw, c.lnw]);
+  let lo = Math.min(...allVals);
+  let hi = Math.max(...allVals);
+  if (lo === hi) {
+    const pad2 = Math.max(Math.abs(lo) * 0.15, 100);
+    lo -= pad2; hi += pad2;
+  } else {
+    const pad2 = (hi - lo) * 0.12;
+    lo -= pad2; hi += pad2;
+  }
+  const n = columns.length;
+  const x = (i) => n === 1 ? L + iw / 2 : L + (i / (n - 1)) * iw;
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * ih;
+
+  const fmtCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+  let svg = '';
+  for (let k = 0; k <= 4; k++) {
+    const tv = lo + (k / 4) * (hi - lo);
+    svg += '<line x1="' + L + '" y1="' + y(tv) + '" x2="' + (W - R) + '" y2="' + y(tv) + '" stroke="var(--border)" stroke-width="1"/>' +
+      '<text x="' + (L - 8) + '" y="' + (y(tv) + 4) + '" text-anchor="end" font-size="13" fill="var(--muted)">' + fmtCompact.format(tv) + '</text>';
+  }
+  if (lo < 0 && hi > 0) {
+    svg += '<line x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>';
+  }
+  // Dashed divider between the prior-year points and the current year's months.
+  if (firstMonthCol > 0 && firstMonthCol < n) {
+    const sx = (x(firstMonthCol - 1) + x(firstMonthCol)) / 2;
+    svg += '<line x1="' + sx + '" y1="' + T + '" x2="' + sx + '" y2="' + (T + ih) + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3"/>';
+  }
+  // X labels: prior years as the year number (brighter), current year as month names.
+  columns.forEach((c, i) => {
+    svg += '<text x="' + x(i) + '" y="' + (H - 16) + '" text-anchor="middle" font-size="13" fill="' + (c.isYear ? 'var(--text)' : 'var(--muted)') + '"' + (c.isYear ? ' font-weight="600"' : '') + '>' + c.label + '</text>';
+  });
+  // One line + markers per series. Total net worth drawn on top of liquid.
+  const seriesLine = (getV, color) => {
+    const withData = columns.map((c, i) => ({ c, i })).filter(({ c }) => getV(c) !== null);
+    if (withData.length > 1) {
+      const pts = withData.map(({ c, i }) => x(i) + ',' + y(getV(c))).join(' ');
+      return '<polyline fill="none" stroke="' + color + '" stroke-width="2.5" points="' + pts + '"/>';
+    }
+    return '';
+  };
+  const seriesDots = (getV, color, seriesLabel) => columns.map((c, i) => {
+    const v = getV(c);
+    if (v === null) return '';
+    const sel = c.key === month;
+    return '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="' + (sel ? 7 : 5) + '" fill="' + color + '"' +
+      (sel ? ' stroke="var(--text)" stroke-width="2"' : '') + '>' +
+      '<title>' + seriesLabel + ' — ' + esc(monthLabel(c.key)) + ': ' + fmtMoney0(v) + '</title></circle>';
+  }).join('');
+  svg += seriesLine((c) => c.lnw, LNW_COLOR) + seriesLine((c) => c.nw, NW_COLOR);
+  svg += seriesDots((c) => c.lnw, LNW_COLOR, 'Liquid net worth') + seriesDots((c) => c.nw, NW_COLOR, 'Net worth');
+
+  const legend = '<div class="nw-legend">' +
+    '<span class="item"><span class="swatch" style="background:' + NW_COLOR + '"></span>Net worth</span>' +
+    '<span class="item"><span class="swatch" style="background:' + LNW_COLOR + '"></span>Liquid net worth</span></div>';
+  const caption = priorYears.length
+    ? 'Prior years show December’s value; ' + chartYear + ' shows month by month. The ringed points are the month you’re viewing.'
+    : chartYear + ' — net worth is assets − liabilities; liquid net worth uses only liquid assets. The ringed points are the month you’re viewing.';
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Net worth trend">' + svg + '</svg>' +
+    legend + '<div class="muted small" style="margin-top:6px">' + caption + '</div>';
+}
+
+// ---------- transaction form ----------
+function addSplitRow(focus) {
+  const row = document.createElement('div');
+  row.className = 'split-row';
+  row.innerHTML =
+    '<div class="field cat"><label>Category</label><input list="categoryList" placeholder="e.g. Groceries"></div>' +
+    '<div class="field amt"><label>Amount</label><input type="number" min="0" step="0.01" placeholder="0.00"></div>' +
+    '<button type="button" class="remove-btn" title="Remove line">✕</button>';
+  row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); updateSplitTotal(); });
+  row.querySelector('.amt input').addEventListener('input', updateSplitTotal);
+  $('splitRows').appendChild(row);
+  updateSplitTotal();
+  if (focus) row.querySelector('.cat input').focus();
+}
+
+function updateSplitTotal() {
+  const rows = $('splitRows').querySelectorAll('.split-row');
+  const totalEl = $('splitTotal');
+  const reimb = $('txReimburse') && $('txReimburse').checked;
+  let sum = 0;
+  rows.forEach((r) => { sum += parseFloat(r.querySelector('.amt input').value) || 0; });
+  if (reimb && sum > 0) {
+    totalEl.hidden = false;
+    totalEl.textContent = 'Subtracts ' + fmtMoney(sum) + (rows.length > 1 ? ' from these categories' : ' from the category');
+  } else if (rows.length > 1) {
+    totalEl.hidden = false;
+    totalEl.textContent = 'Total: ' + fmtMoney(sum);
+  } else {
+    totalEl.hidden = true;
+  }
+}
+
+function resetSplitRows() {
+  $('splitRows').innerHTML = '';
+  addSplitRow(false);
+}
+
+function setTxType(type) {
+  txType = type;
+  document.querySelectorAll('.type-tab').forEach((b) => {
+    const active = b.dataset.type === type;
+    b.classList.toggle('active', active);
+    b.style.borderColor = active ? TYPE_COLORS[type] : '';
+    b.style.color = active ? TYPE_COLORS[type] : '';
+    b.style.background = active ? TYPE_COLORS[type] + '22' : '';
+  });
+  const isExpense = type === 'fixed' || type === 'spending';
+  $('businessField').hidden = !isExpense;
+  $('accountField').hidden = isExpense;
+  $('expenseFields').hidden = !isExpense;
+  $('savingFields').hidden = isExpense;
+  $('txError').hidden = true;
+  syncReimburseUI();
+}
+
+// Reimbursement checkbox drives the submit label, hint, business-field wording,
+// and split-total text. Only meaningful for the two expense types.
+function updateTxSubmitLabel() {
+  if (editingId) { $('txSubmit').textContent = 'Save Changes'; return; }
+  const isExpense = txType === 'fixed' || txType === 'spending';
+  $('txSubmit').textContent = (isExpense && $('txReimburse').checked)
+    ? 'Add Reimbursement'
+    : 'Add ' + TYPE_LABELS[txType];
+}
+
+function syncReimburseUI() {
+  const isExpense = txType === 'fixed' || txType === 'spending';
+  const on = isExpense && $('txReimburse').checked;
+  $('reimburseHint').hidden = !on;
+  $('businessLabel').textContent = on ? 'Paid by' : 'Business';
+  $('txBusiness').placeholder = on ? 'e.g. Alex, or Verizon (refund)' : 'e.g. Costco';
+  updateTxSubmitLabel();
+  updateSplitTotal();
+}
+
+$('typeTabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.type-tab');
+  if (btn) setTxType(btn.dataset.type);
+});
+
+$('txReimburse').addEventListener('change', syncReimburseUI);
+
+$('addSplit').addEventListener('click', () => addSplitRow(true));
+
+$('txForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const err = (msg) => { const el = $('txError'); el.textContent = msg; el.hidden = false; };
+  $('txError').hidden = true;
+  const date = $('txDate').value;
+  if (!date) return err('Pick a date.');
+  const isExpense = txType === 'fixed' || txType === 'spending';
+  let tx;
+  if (isExpense) {
+    const reimb = $('txReimburse').checked;
+    const business = $('txBusiness').value.trim();
+    if (!business) return err(reimb ? 'Enter who paid you back (a person or company).' : 'Enter the business name.');
+    const splits = [];
+    for (const row of $('splitRows').querySelectorAll('.split-row')) {
+      const category = row.querySelector('.cat input').value.trim();
+      const amount = parseAmt(row.querySelector('.amt input').value);
+      if (!category || amount === null) return err('Each line needs a category and an amount above $0.');
+      // A reimbursement is stored as a negative expense so it nets down the category.
+      splits.push({ category, amount: reimb ? -amount : amount });
+    }
+    tx = { type: txType, date, business, splits };
+    if (reimb) tx.reimbursement = true;
+  } else {
+    const account = $('txAccount').value;
+    if (!ACCOUNT_TAG_SET.has(account)) return err('Pick an account.');
+    const amount = parseAmtSigned($('txAmount').value);
+    if (amount === null) return err('Enter a nonzero amount.');
+    tx = { type: txType, date, account, amount };
+  }
+  if (editingId) {
+    const idx = data.transactions.findIndex((t) => t.id === editingId);
+    if (idx !== -1) data.transactions[idx] = { id: editingId, ...tx };
+    editingId = null;
+    $('editingBanner').hidden = true;
+  } else {
+    data.transactions.push({ id: uid(), ...tx });
+  }
+  $('txBusiness').value = '';
+  $('txAccount').selectedIndex = 0;
+  $('txAmount').value = '';
+  $('txReimburse').checked = false;
+  resetSplitRows();
+  setTxType(txType); // refresh the submit label + reimbursement UI
+  save();
+  // jump to the transaction's month so it doesn't land somewhere invisible
+  if (!date.startsWith(month)) month = date.slice(0, 7);
+  render();
+});
+
+// ---------- edit transactions ----------
+function startEdit(id) {
+  const t = data.transactions.find((x) => x.id === id);
+  if (!t) return;
+  editingId = id;
+  setTxType(t.type);
+  $('txDate').value = t.date;
+  if (t.splits) {
+    $('txBusiness').value = t.business;
+    $('txReimburse').checked = !!t.reimbursement;
+    $('splitRows').innerHTML = '';
+    for (const s of t.splits) {
+      addSplitRow(false);
+      const rows = $('splitRows').querySelectorAll('.split-row');
+      const row = rows[rows.length - 1];
+      row.querySelector('.cat input').value = s.category;
+      // Splits are stored negative for reimbursements; show the positive value the user typed.
+      row.querySelector('.amt input').value = t.reimbursement ? Math.abs(s.amount) : s.amount;
+    }
+    syncReimburseUI();
+  } else {
+    $('txAccount').value = t.account;
+    $('txAmount').value = t.amount;
+  }
+  $('editingLabel').textContent = 'Editing: ' + fmtDate(t.date) + ' — ' + (t.business || t.account);
+  $('editingBanner').hidden = false;
+  $('txForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelEdit() {
+  editingId = null;
+  $('editingBanner').hidden = true;
+  $('txBusiness').value = '';
+  $('txAccount').selectedIndex = 0;
+  $('txAmount').value = '';
+  $('txReimburse').checked = false;
+  $('txDate').value = todayISO();
+  resetSplitRows();
+  setTxType(txType);
+}
+
+$('cancelEdit').addEventListener('click', cancelEdit);
+
+// ---------- income form ----------
+$('incomeForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const err = (msg) => { const el = $('incError'); el.textContent = msg; el.hidden = false; };
+  $('incError').hidden = true;
+  const name = $('incName').value.trim();
+  const amount = parseAmt($('incAmount').value);
+  if (!name) return err('Enter a name for this income source.');
+  if (amount === null) return err('Enter an amount above $0.');
+  data.incomes.push({ id: uid(), month, name, amount, taxType: $('incTag').value });
+  $('incName').value = '';
+  $('incAmount').value = '';
+  save();
+  render();
+});
+
+// ---------- category manager ----------
+$('categoryForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const err = (msg) => { const el = $('catError'); el.textContent = msg; el.hidden = false; };
+  $('catError').hidden = true;
+  const name = $('catName').value.trim();
+  if (!name) return err('Enter a category name.');
+  if (allCategoryNames().some((c) => c.toLowerCase() === name.toLowerCase())) return err('That category already exists.');
+  data.categories.push(name);
+  $('catName').value = '';
+  save();
+  render();
+});
+
+$('copyIncome').addEventListener('click', () => {
+  const prev = shiftMonth(month, -1);
+  for (const i of data.incomes.filter((x) => x.month === prev)) {
+    data.incomes.push({ name: i.name, amount: i.amount, taxType: i.taxType || 'earned', id: uid(), month });
+  }
+  save();
+  render();
+});
+
+// ---------- deletes & edits (event delegation) ----------
+document.addEventListener('click', (e) => {
+  const editTx = e.target.closest('[data-edit-tx]');
+  if (editTx) {
+    startEdit(editTx.dataset.editTx);
+    return;
+  }
+  const delTx = e.target.closest('[data-del-tx]');
+  if (delTx) {
+    if (delTx.dataset.delTx === editingId) cancelEdit();
+    data.transactions = data.transactions.filter((t) => t.id !== delTx.dataset.delTx);
+    save();
+    render();
+    return;
+  }
+  const delInc = e.target.closest('[data-del-income]');
+  if (delInc) {
+    data.incomes = data.incomes.filter((i) => i.id !== delInc.dataset.delIncome);
+    save();
+    render();
+    return;
+  }
+  const cycInc = e.target.closest('[data-cycle-income]');
+  if (cycInc) {
+    const inc = data.incomes.find((i) => i.id === cycInc.dataset.cycleIncome);
+    if (inc) {
+      inc.taxType = INCOME_TAX_NEXT[inc.taxType] || 'earned';
+      save();
+      render();
+    }
+    return;
+  }
+  const delCat = e.target.closest('[data-del-cat]');
+  if (delCat) {
+    data.categories = data.categories.filter((c) => c !== delCat.dataset.delCat);
+    save();
+    render();
+    return;
+  }
+  const moveAsset = e.target.closest('[data-move-asset]');
+  if (moveAsset) {
+    moveEntry('assets', moveAsset.dataset.moveAsset, parseInt(moveAsset.dataset.dir, 10));
+    return;
+  }
+  const moveLiab = e.target.closest('[data-move-liab]');
+  if (moveLiab) {
+    moveEntry('liabilities', moveLiab.dataset.moveLiab, parseInt(moveLiab.dataset.dir, 10));
+    return;
+  }
+  const delAsset = e.target.closest('[data-del-asset]');
+  if (delAsset) {
+    data.assets = data.assets.filter((a) => a.id !== delAsset.dataset.delAsset);
+    save();
+    render();
+    return;
+  }
+  const delLiab = e.target.closest('[data-del-liab]');
+  if (delLiab) {
+    data.liabilities = data.liabilities.filter((l) => l.id !== delLiab.dataset.delLiab);
+    save();
+    render();
+  }
+});
+
+// ---------- inline asset/liability amount edits ----------
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (!t.closest) return;
+  const a = t.closest('[data-edit-asset]');
+  if (a) { updateEntryAmount('assets', a.dataset.editAsset, a.value, a); return; }
+  const l = t.closest('[data-edit-liab]');
+  if (l) { updateEntryAmount('liabilities', l.dataset.editLiab, l.value, l); }
+});
+
+// ---------- backup & restore ----------
+function exportData() {
+  $('importError').hidden = true;
+  $('importStatus').hidden = true;
+  const payload = JSON.stringify({ app: 'my-finances', version: 1, exportedAt: new Date().toISOString(), data }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'my-finances-backup-' + todayISO() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  $('importStatus').textContent = 'Backup file downloaded. Keep it somewhere safe, like your Google Drive folder.';
+  $('importStatus').hidden = false;
+}
+
+function importData(file) {
+  $('importError').hidden = true;
+  $('importStatus').hidden = true;
+  const err = (msg) => { const el = $('importError'); el.textContent = msg; el.hidden = false; };
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(reader.result);
+    } catch (e) {
+      return err('That file isn’t valid — it doesn’t look like a My Finances backup.');
+    }
+    // Accept either a wrapped export ({ app, data }) or a raw data object.
+    const d = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+    if (!d || !Array.isArray(d.incomes) || !Array.isArray(d.transactions)) {
+      return err('That file isn’t a My Finances backup (missing income and transaction records).');
+    }
+    if (!Array.isArray(d.categories)) d.categories = [];
+    if (!Array.isArray(d.assets)) d.assets = [];
+    if (!Array.isArray(d.liabilities)) d.liabilities = [];
+    const hasData = data.incomes.length || data.transactions.length || data.categories.length || data.assets.length || data.liabilities.length;
+    if (hasData && !window.confirm('Importing will REPLACE all data currently in this browser with the backup. Continue?')) {
+      return;
+    }
+    data = { incomes: d.incomes, transactions: d.transactions, categories: d.categories, assets: d.assets, liabilities: d.liabilities };
+    migrateData(data); // normalize older backups (account tags, income tags, liquid flags)
+    month = currentMonth();
+    save();
+    render();
+    $('importStatus').textContent = 'Backup imported — restored ' + data.incomes.length + ' income entr' + (data.incomes.length === 1 ? 'y' : 'ies') + ' and ' + data.transactions.length + ' transaction' + (data.transactions.length === 1 ? '' : 's') + '.';
+    $('importStatus').hidden = false;
+  };
+  reader.onerror = () => err('Could not read that file. Please try again.');
+  reader.readAsText(file);
+}
+
+$('exportBtn').addEventListener('click', exportData);
+$('importBtn').addEventListener('click', () => { $('importFile').value = ''; $('importFile').click(); });
+$('importFile').addEventListener('change', (e) => { if (e.target.files[0]) importData(e.target.files[0]); });
+
+// ---------- view switching ----------
+function setView(v) {
+  view = v;
+  $('incomeView').hidden = v !== 'income';
+  $('balanceView').hidden = v !== 'balance';
+  $('dashView').hidden = v !== 'dashboard';
+  $('aiView').hidden = v !== 'aianalysis';
+  $('viewIncomeTab').classList.toggle('active', v === 'income');
+  $('viewBalanceTab').classList.toggle('active', v === 'balance');
+  $('viewDashTab').classList.toggle('active', v === 'dashboard');
+  $('viewAITab').classList.toggle('active', v === 'aianalysis');
+  render(); // header label & nav are view-dependent (Dashboard shows the year)
+  // Insights only ever generate from an explicit "Generate" click — never just
+  // from opening this tab or changing the date range. Each query costs money.
+}
+$('viewIncomeTab').addEventListener('click', () => setView('income'));
+$('viewBalanceTab').addEventListener('click', () => setView('balance'));
+$('viewDashTab').addEventListener('click', () => setView('dashboard'));
+$('viewAITab').addEventListener('click', () => setView('aianalysis'));
+
+// ---------- transaction filters ----------
+$('filterType').addEventListener('change', (e) => { txFilterType = e.target.value; render(); });
+$('filterCat').addEventListener('change', (e) => { txFilterCat = e.target.value; render(); });
+
+// ---------- asset & liability forms ----------
+function wireEntryForm(formId, nameId, amtId, errId, listKey, noun, liquidSelectId) {
+  $(formId).addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err = (msg) => { const el = $(errId); el.textContent = msg; el.hidden = false; };
+    $(errId).hidden = true;
+    const name = $(nameId).value.trim();
+    const amount = parseAmt0($(amtId).value);
+    if (!name) return err('Enter a name for this ' + noun + '.');
+    if (amount === null) return err('Enter an amount ($0 or more).');
+    const entry = { id: uid(), month, name, amount };
+    if (liquidSelectId) entry.liquid = $(liquidSelectId).value === 'liquid';
+    data[listKey].push(entry);
+    $(nameId).value = '';
+    $(amtId).value = '';
+    save();
+    render();
+  });
+}
+wireEntryForm('assetForm', 'assetName', 'assetAmount', 'assetError', 'assets', 'asset', 'assetLiquid');
+wireEntryForm('liabForm', 'liabName', 'liabAmount', 'liabError', 'liabilities', 'liability');
+
+function copyEntries(listKey) {
+  const prev = shiftMonth(month, -1);
+  for (const e of data[listKey].filter((x) => x.month === prev)) {
+    const copy = { name: e.name, amount: e.amount, id: uid(), month };
+    if ('liquid' in e) copy.liquid = e.liquid;
+    data[listKey].push(copy);
+  }
+  save();
+  render();
+}
+$('copyAssets').addEventListener('click', () => copyEntries('assets'));
+$('copyLiabs').addEventListener('click', () => copyEntries('liabilities'));
+
+// ---------- month navigation ----------
+// On the Dashboard the arrows step by a whole year; elsewhere by month.
+const navStep = () => view === 'dashboard' ? 12 : 1;
+$('prevMonth').addEventListener('click', () => { month = shiftMonth(month, -navStep()); render(); });
+$('nextMonth').addEventListener('click', () => { month = shiftMonth(month, navStep()); render(); });
+$('backToCurrent').addEventListener('click', () => { month = currentMonth(); render(); });
+
+// ---------- init ----------
+$('txAccount').innerHTML = ACCOUNT_TAG_IDS
+  .map((a) => '<option value="' + esc(a) + '">' + esc(a) + (isPretaxAccount(a) ? ' (pre-tax)' : '') + '</option>')
+  .join('');
+$('txDate').value = todayISO();
+addSplitRow(false);
+setTxType('spending');
+initializeAIAnalysis();
+render();
+initDriveSync();
+</script>
+</body>
+</html>
