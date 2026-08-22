@@ -803,7 +803,11 @@ function scheduleDriveSave() {
 // sign-in popup when it's opened without a user gesture (confirmed via testing).
 function requestDriveAccess() {
   return new Promise((resolve) => {
-    driveTokenClient.callback = (resp) => resolve(!resp.error);
+    driveTokenClient.callback = (resp) => {
+      if (resp.error) { resolve(false); return; }
+      driveAccessToken = resp.access_token;
+      resolve(true);
+    };
     driveTokenClient.requestAccessToken();
   });
 }
