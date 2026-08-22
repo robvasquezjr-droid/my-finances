@@ -771,7 +771,7 @@ const save = () => { localStorage.setItem(KEY, JSON.stringify(data)); scheduleDr
 // Fill in after creating an OAuth Client ID in Google Cloud Console (Authorized JavaScript
 // origins = this site's URL, scope = drive.file). Until then, sync stays off and the app
 // behaves exactly as before (localStorage only).
-const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '1005102499564-3nsl9164462731p1q0i83f5kekp6omr9.apps.googleusercontent.com';
 const SYNC_ENABLED = GOOGLE_CLIENT_ID.indexOf('YOUR_CLIENT_ID') === -1;
 const DRIVE_FILE_NAME = 'my-finances-data.json';
 const DRIVE_FILEID_KEY = 'finance-app-drive-fileid';
@@ -799,23 +799,28 @@ function scheduleDriveSave() {
   saveDebounceTimer = setTimeout(() => saveToDrive(data), 2000);
 }
 
-function requestDriveAccess(silent) {
+// Must only be called from a real click handler — browsers block the Google
+// sign-in popup when it's opened without a user gesture (confirmed via testing).
+function requestDriveAccess() {
   return new Promise((resolve) => {
     driveTokenClient.callback = (resp) => resolve(!resp.error);
-    driveTokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+    driveTokenClient.requestAccessToken();
   });
 }
 
-// Wraps fetch with the Drive bearer token; transparently re-prompts once if the token expired.
+// Wraps fetch with the Drive bearer token. On expiry, stops (rather than silently
+// re-prompting outside a click, which browsers block) and asks the user to sign in again.
 async function driveFetch(url, options = {}) {
   const res = await fetch(url, {
     ...options,
     headers: { ...(options.headers || {}), Authorization: 'Bearer ' + driveAccessToken },
   });
   if (res.status === 401) {
-    const ok = await requestDriveAccess(true);
-    if (!ok) throw new Error('drive-auth-expired');
-    return driveFetch(url, options);
+    driveAccessToken = null;
+    $('signinError').textContent = 'Your Google session expired — sign in again to keep syncing.';
+    $('signinError').hidden = false;
+    $('signinGate').hidden = false;
+    throw new Error('drive-auth-expired');
   }
   return res;
 }
@@ -883,7 +888,7 @@ async function afterSignIn() {
   }
 }
 
-async function initDriveSync() {
+function initDriveSync() {
   if (!SYNC_ENABLED) return; // no client ID configured yet — stay local-only, as before
   driveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
@@ -893,16 +898,13 @@ async function initDriveSync() {
 
   $('googleSignInBtn').addEventListener('click', async () => {
     $('signinError').hidden = true;
-    const ok = await requestDriveAccess(false);
+    const ok = await requestDriveAccess();
     if (!ok) { $('signinError').textContent = 'Sign-in failed. Try again.'; $('signinError').hidden = false; return; }
     afterSignIn();
   });
   $('skipSyncBtn').addEventListener('click', () => { $('signinGate').hidden = true; setSyncStatus('offline'); });
 
-  // Try a silent sign-in first, in case this browser already granted access this session.
-  const silentOk = await requestDriveAccess(true).catch(() => false);
-  if (silentOk) afterSignIn();
-  else $('signinGate').hidden = false;
+  $('signinGate').hidden = false;
 }
 
 // ---------- AI Analysis state ----------
