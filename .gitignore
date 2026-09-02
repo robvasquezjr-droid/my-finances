@@ -1,2 +1,6 @@
 my-finances-backup-*.json
 .claude/
+Backup/
+
+# OAuth credentials downloaded from Google Cloud Console — never publish these.
+client_secret_*.json

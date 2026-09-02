@@ -131,6 +131,14 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom:
 .chip.custom { border-color: var(--accent); }
 .chip-x { background: none; border: none; color: var(--muted); padding: 0; font-size: 11px; line-height: 1; }
 .chip-x:hover { color: var(--red); }
+.chip.debt { border-color: #4a3aa7; }
+.chip-debt {
+  background: none; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--muted); padding: 1px 7px; font-size: 10px; line-height: 1.4;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.chip-debt:hover { border-color: #4a3aa7; color: #4a3aa7; }
+.chip-debt.on { background: #4a3aa7; border-color: #4a3aa7; color: #ffffff; }
 
 select {
   background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
@@ -201,6 +209,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .nw-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
 .nw-legend .item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .nw-legend .swatch { width: 14px; height: 3px; border-radius: 2px; flex: none; }
+.nw-legend .swatch.bar { height: 11px; border-radius: 2px; }
 
 .footnote { text-align: center; font-size: 12px; margin-top: 4px; }
 
@@ -456,7 +465,9 @@ select:focus { outline: none; border-color: var(--accent); }
         <div id="categoryArea"></div>
         <details class="cat-manager">
           <summary>Manage categories</summary>
-          <p class="muted small" style="margin:10px 0 12px">Used for Fixed Cost and Spending. Add your own here, or just type a new one straight into the category box when adding a transaction.</p>
+          <p class="muted small" style="margin:10px 0 12px">Used for Fixed Cost and Spending. Add your own here, or just type a new one straight into the category box when adding a transaction.
+          Tag a category <b>debt</b> (mortgage, car loan, medical, anything bought on credit) to include it in the debt service ratio on the Dashboard.
+          Record HSA or insurance paybacks with the “reimbursement” checkbox so they subtract from that ratio.</p>
           <div id="categoryChips"></div>
           <form class="form-row" id="categoryForm" style="margin-top:12px">
             <div class="field" style="flex:2">
@@ -750,13 +761,14 @@ function loadData() {
     const d = JSON.parse(localStorage.getItem(KEY));
     if (d && Array.isArray(d.incomes) && Array.isArray(d.transactions)) {
       if (!Array.isArray(d.categories)) d.categories = [];
+      if (!Array.isArray(d.debtCategories)) d.debtCategories = [];
       if (!Array.isArray(d.assets)) d.assets = [];
       if (!Array.isArray(d.liabilities)) d.liabilities = [];
       if (migrateData(d)) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
       return d;
     }
   } catch (e) { /* corrupted data falls through to a fresh start */ }
-  return { incomes: [], transactions: [], categories: [], assets: [], liabilities: [] };
+  return { incomes: [], transactions: [], categories: [], debtCategories: [], assets: [], liabilities: [] };
 }
 let data = loadData();
 let month = currentMonth();
@@ -880,6 +892,7 @@ async function afterSignIn() {
     if (remote && Array.isArray(remote.incomes) && Array.isArray(remote.transactions)) {
       data = remote;
       if (!Array.isArray(data.categories)) data.categories = [];
+      if (!Array.isArray(data.debtCategories)) data.debtCategories = [];
       if (!Array.isArray(data.assets)) data.assets = [];
       if (!Array.isArray(data.liabilities)) data.liabilities = [];
       migrateData(data);
@@ -1719,9 +1732,14 @@ function renderDatalists() {
 
 function renderCategoryManager() {
   const custom = new Set(data.categories);
+  const debt = new Set(data.debtCategories);
   $('categoryChips').innerHTML = allCategoryNames().map((name) => {
     const removable = custom.has(name) && !DEFAULT_SET.has(name);
-    return '<span class="chip' + (removable ? ' custom' : '') + '">' + esc(name) +
+    const isDebt = debt.has(name);
+    return '<span class="chip' + (removable ? ' custom' : '') + (isDebt ? ' debt' : '') + '">' + esc(name) +
+      '<button type="button" class="chip-debt' + (isDebt ? ' on' : '') + '" data-toggle-debt="' + esc(name) + '"' +
+      ' title="' + (isDebt ? 'Counted as a debt payment — click to stop counting it' : 'Count this category as a debt payment') + '"' +
+      ' aria-pressed="' + isDebt + '">debt</button>' +
       (removable ? '<button type="button" class="chip-x" data-del-cat="' + esc(name) + '" title="Remove category">✕</button>' : '') +
       '</span>';
   }).join('');
@@ -1865,6 +1883,27 @@ function yearTaxPicture(year) {
   };
 }
 
+// Debt payments ÷ income for a period — `prefix` is a month ('2026-08') or a
+// whole year ('2026'). Debt payments are fixed/spending splits in the categories
+// tagged debt in the category manager. Reimbursements are stored as negative
+// splits in the same category, so an HSA payback nets itself out here.
+// Returns null when the ratio is unknowable: no categories tagged, or no income.
+function debtServiceRatio(prefix) {
+  const debtSet = new Set(data.debtCategories);
+  if (debtSet.size === 0) return null;
+  const income = data.incomes
+    .filter((i) => i.month.startsWith(prefix))
+    .reduce((s, i) => s + i.amount, 0);
+  if (income <= 0) return null;
+  let debt = 0;
+  for (const t of data.transactions) {
+    if (!t.date.startsWith(prefix) || !t.splits) continue;
+    if (t.type !== 'fixed' && t.type !== 'spending') continue;
+    for (const s of t.splits) if (debtSet.has(s.category)) debt += s.amount;
+  }
+  return debt / income;
+}
+
 // ---------- dashboard (year running totals) ----------
 function renderDashboard() {
   const year = month.slice(0, 4);
@@ -1951,8 +1990,27 @@ function renderDashboard() {
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const NW_COLOR = '#2a78d6';   // total net worth line
-const LNW_COLOR = '#15803d';  // liquid net worth line
+// Axis ticks on clean values (1/2/2.5/5 × 10^k) rather than an even split of the
+// data range, which lands on unreadable numbers like -$358.9K. Returns the snapped
+// domain alongside the ticks so the top and bottom gridlines bound the plot.
+function niceScale(lo, hi, target) {
+  const raw = (hi - lo) / target;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+  const sLo = Math.floor(lo / step) * step;
+  const sHi = Math.ceil(hi / step) * step;
+  const ticks = [];
+  for (let v = sLo; v <= sHi + step * 1e-6; v += step) ticks.push(Math.abs(v) < step * 1e-6 ? 0 : v);
+  return { lo: sLo, hi: sHi, ticks };
+}
+
+const NW_COLOR = '#2a78d6';   // total net worth bars
+const LNW_COLOR = '#15803d';  // liquid net worth bars
+// Debt service ratio marks. Violet was picked over the more obvious orange because
+// orange sits ΔE 3.7 from the liquid-net-worth green under protanopia — the palette
+// validator fails that pair outright. This trio passes every check.
+const DSR_COLOR = '#4a3aa7';
 
 function renderNetWorthChart() {
   const box = $('nwChart');
@@ -1989,68 +2047,117 @@ function renderNetWorthChart() {
     return;
   }
 
-  const W = 1000, H = 300, L = 72, R = 22, T = 18, B = 46;
-  const iw = W - L - R, ih = H - T - B;
+  // Debt service ratio per column. Prior-year columns use that whole year's
+  // payments and income — the flow equivalent of the December balance the bars show.
+  for (const c of columns) c.dsr = debtServiceRatio(c.isYear ? c.key.slice(0, 4) : c.key);
+  const ratios = columns.map((c) => c.dsr).filter((v) => v !== null);
+  const showRatio = ratios.length > 0;
+
+  // Two stacked panels sharing one x scale: net worth bars on top, debt service
+  // ratio below. Deliberately NOT a second y-axis over the bars — two scales on one
+  // plot make the reader see a correlation that the arbitrary alignment invented.
+  const W = 1000, L = 72, R = 22, T = 18;
+  const ihTop = 200;
+  const ratioTop = T + ihTop + 52;
+  const ihBot = showRatio ? 76 : 0;
+  const H = showRatio ? ratioTop + ihBot + 42 : T + ihTop + 42;
+  const labelY = showRatio ? ratioTop + ihBot + 26 : T + ihTop + 26;
+  const iw = W - L - R;
+
+  // Bars are read against zero, so the money scale always includes it.
   const allVals = dataCols.flatMap((c) => [c.nw, c.lnw]);
-  let lo = Math.min(...allVals);
-  let hi = Math.max(...allVals);
-  if (lo === hi) {
-    const pad2 = Math.max(Math.abs(lo) * 0.15, 100);
-    lo -= pad2; hi += pad2;
-  } else {
-    const pad2 = (hi - lo) * 0.12;
-    lo -= pad2; hi += pad2;
-  }
+  let lo = Math.min(0, ...allVals);
+  let hi = Math.max(0, ...allVals);
+  if (lo === hi) hi = 100;
+  const money = niceScale(lo, hi, 4);
+  lo = money.lo; hi = money.hi;
+
   const n = columns.length;
-  const x = (i) => n === 1 ? L + iw / 2 : L + (i / (n - 1)) * iw;
-  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * ih;
+  const bandW = iw / n;
+  const cx = (i) => L + (i + 0.5) * bandW;
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * ihTop;
+
+  const ratioScale = niceScale(showRatio ? Math.min(0, ...ratios) : 0, showRatio ? Math.max(0.5, Math.max(...ratios) * 1.1) : 1, 2);
+  const ry = (v) => ratioTop + (1 - (v - ratioScale.lo) / (ratioScale.hi - ratioScale.lo)) * ihBot;
 
   const fmtCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+  const gridline = (yy) => '<line x1="' + L + '" y1="' + yy + '" x2="' + (W - R) + '" y2="' + yy + '" stroke="var(--border)" stroke-width="1"/>';
+  const axisText = (yy, label) => '<text x="' + (L - 8) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="13" fill="var(--muted)">' + label + '</text>';
+
   let svg = '';
-  for (let k = 0; k <= 4; k++) {
-    const tv = lo + (k / 4) * (hi - lo);
-    svg += '<line x1="' + L + '" y1="' + y(tv) + '" x2="' + (W - R) + '" y2="' + y(tv) + '" stroke="var(--border)" stroke-width="1"/>' +
-      '<text x="' + (L - 8) + '" y="' + (y(tv) + 4) + '" text-anchor="end" font-size="13" fill="var(--muted)">' + fmtCompact.format(tv) + '</text>';
-  }
+  for (const tv of money.ticks) svg += gridline(y(tv)) + axisText(y(tv), fmtCompact.format(tv));
   if (lo < 0 && hi > 0) {
-    svg += '<line x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>';
+    svg += '<line x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '" stroke="var(--muted)" stroke-width="1"/>';
   }
-  // Dashed divider between the prior-year points and the current year's months.
+  // Divider between the collapsed prior-year columns and the current year's months.
   if (firstMonthCol > 0 && firstMonthCol < n) {
-    const sx = (x(firstMonthCol - 1) + x(firstMonthCol)) / 2;
-    svg += '<line x1="' + sx + '" y1="' + T + '" x2="' + sx + '" y2="' + (T + ih) + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3"/>';
+    const sx = L + firstMonthCol * bandW;
+    const sy2 = showRatio ? ratioTop + ihBot : T + ihTop;
+    svg += '<line x1="' + sx + '" y1="' + T + '" x2="' + sx + '" y2="' + sy2 + '" stroke="var(--border)" stroke-width="1"/>';
   }
+
+  // Bar: 4px rounded data-end, square where it meets the baseline.
+  const barPath = (bx, bw, yv, y0) => {
+    const r = Math.min(4, bw / 2, Math.abs(y0 - yv));
+    const dir = yv < y0 ? 1 : -1; // 1 = grows upward
+    return 'M' + bx + ',' + y0 +
+      ' L' + bx + ',' + (yv + r * dir) +
+      ' Q' + bx + ',' + yv + ' ' + (bx + r) + ',' + yv +
+      ' L' + (bx + bw - r) + ',' + yv +
+      ' Q' + (bx + bw) + ',' + yv + ' ' + (bx + bw) + ',' + (yv + r * dir) +
+      ' L' + (bx + bw) + ',' + y0 + ' Z';
+  };
+  // Two bars per column, 2px of surface between them, capped so a full year stays legible.
+  const barW = Math.max(3, Math.min(18, bandW * 0.34));
+  const y0 = y(0);
+  columns.forEach((c, i) => {
+    if (c.nw === null) return;
+    const sel = c.key === month;
+    const outline = sel ? ' stroke="var(--text)" stroke-width="1.5"' : '';
+    const pairs = [
+      { v: c.nw, color: NW_COLOR, label: 'Net worth', bx: cx(i) - barW - 1 },
+      { v: c.lnw, color: LNW_COLOR, label: 'Liquid net worth', bx: cx(i) + 1 },
+    ];
+    for (const p of pairs) {
+      svg += '<path d="' + barPath(p.bx, barW, y(p.v), y0) + '" fill="' + p.color + '"' + outline + '>' +
+        '<title>' + p.label + ' — ' + esc(monthLabel(c.key)) + ': ' + fmtMoney0(p.v) + '</title></path>';
+    }
+  });
+
   // X labels: prior years as the year number (brighter), current year as month names.
   columns.forEach((c, i) => {
-    svg += '<text x="' + x(i) + '" y="' + (H - 16) + '" text-anchor="middle" font-size="13" fill="' + (c.isYear ? 'var(--text)' : 'var(--muted)') + '"' + (c.isYear ? ' font-weight="600"' : '') + '>' + c.label + '</text>';
+    svg += '<text x="' + cx(i) + '" y="' + labelY + '" text-anchor="middle" font-size="13" fill="' +
+      (c.isYear ? 'var(--text)' : 'var(--muted)') + '"' + (c.isYear ? ' font-weight="600"' : '') + '>' + c.label + '</text>';
   });
-  // One line + markers per series. Total net worth drawn on top of liquid.
-  const seriesLine = (getV, color) => {
-    const withData = columns.map((c, i) => ({ c, i })).filter(({ c }) => getV(c) !== null);
-    if (withData.length > 1) {
-      const pts = withData.map(({ c, i }) => x(i) + ',' + y(getV(c))).join(' ');
-      return '<polyline fill="none" stroke="' + color + '" stroke-width="2.5" points="' + pts + '"/>';
-    }
-    return '';
-  };
-  const seriesDots = (getV, color, seriesLabel) => columns.map((c, i) => {
-    const v = getV(c);
-    if (v === null) return '';
-    const sel = c.key === month;
-    return '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="' + (sel ? 7 : 5) + '" fill="' + color + '"' +
-      (sel ? ' stroke="var(--text)" stroke-width="2"' : '') + '>' +
-      '<title>' + seriesLabel + ' — ' + esc(monthLabel(c.key)) + ': ' + fmtMoney0(v) + '</title></circle>';
-  }).join('');
-  svg += seriesLine((c) => c.lnw, LNW_COLOR) + seriesLine((c) => c.nw, NW_COLOR);
-  svg += seriesDots((c) => c.lnw, LNW_COLOR, 'Liquid net worth') + seriesDots((c) => c.nw, NW_COLOR, 'Net worth');
+
+  if (showRatio) {
+    svg += '<text x="' + L + '" y="' + (ratioTop - 14) + '" font-size="13" fill="var(--text)" font-weight="600">Debt service ratio</text>';
+    // Whole percents on the axis; fmtPct's decimal is kept for the tooltips.
+    const tickPct = (v) => Math.round(v * 1000) % 10 === 0 ? Math.round(v * 100) + '%' : fmtPct(v);
+    for (const tv of ratioScale.ticks) svg += gridline(ry(tv)) + axisText(ry(tv), tickPct(tv));
+    // Unconnected diamonds — a different shape as well as a different color, so the
+    // second measure never reads as part of the bars above it.
+    columns.forEach((c, i) => {
+      if (c.dsr === null) return;
+      const sel = c.key === month;
+      const d = sel ? 7 : 5.5;
+      const px = cx(i), py = ry(c.dsr);
+      const pts = px + ',' + (py - d) + ' ' + (px + d) + ',' + py + ' ' + px + ',' + (py + d) + ' ' + (px - d) + ',' + py;
+      svg += '<polygon points="' + pts + '" fill="' + DSR_COLOR + '" stroke="' + (sel ? 'var(--text)' : 'var(--card)') + '" stroke-width="2">' +
+        '<title>Debt service ratio — ' + esc(c.isYear ? c.key.slice(0, 4) : monthLabel(c.key)) + ': ' + fmtPct(c.dsr) + '</title></polygon>';
+    });
+  }
 
   const legend = '<div class="nw-legend">' +
-    '<span class="item"><span class="swatch" style="background:' + NW_COLOR + '"></span>Net worth</span>' +
-    '<span class="item"><span class="swatch" style="background:' + LNW_COLOR + '"></span>Liquid net worth</span></div>';
-  const caption = priorYears.length
-    ? 'Prior years show December’s value; ' + chartYear + ' shows month by month. The ringed points are the month you’re viewing.'
-    : chartYear + ' — net worth is assets − liabilities; liquid net worth uses only liquid assets. The ringed points are the month you’re viewing.';
-  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Net worth trend">' + svg + '</svg>' +
+    '<span class="item"><span class="swatch bar" style="background:' + NW_COLOR + '"></span>Net worth</span>' +
+    '<span class="item"><span class="swatch bar" style="background:' + LNW_COLOR + '"></span>Liquid net worth</span></div>';
+  let caption = priorYears.length
+    ? 'Prior years show December’s balance; ' + chartYear + ' shows month by month. The outlined bars are the month you’re viewing.'
+    : chartYear + ' — net worth is assets − liabilities; liquid net worth uses only liquid assets. The outlined bars are the month you’re viewing.';
+  caption += showRatio
+    ? ' The ratio below is debt payments ÷ income for the same period' + (priorYears.length ? ' (prior years use that whole year’s totals)' : '') + '; lower is better.'
+    : ' Tag categories as <b>debt</b> under Manage categories on the Income Statement to see your debt service ratio here.';
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Net worth and liquid net worth by month, with debt service ratio">' + svg + '</svg>' +
     legend + '<div class="muted small" style="margin-top:6px">' + caption + '</div>';
 }
 
@@ -2304,6 +2411,17 @@ document.addEventListener('click', (e) => {
   const delCat = e.target.closest('[data-del-cat]');
   if (delCat) {
     data.categories = data.categories.filter((c) => c !== delCat.dataset.delCat);
+    data.debtCategories = data.debtCategories.filter((c) => c !== delCat.dataset.delCat);
+    save();
+    render();
+    return;
+  }
+  const debtCat = e.target.closest('[data-toggle-debt]');
+  if (debtCat) {
+    const name = debtCat.dataset.toggleDebt;
+    data.debtCategories = data.debtCategories.includes(name)
+      ? data.debtCategories.filter((c) => c !== name)
+      : [...data.debtCategories, name];
     save();
     render();
     return;
@@ -2379,13 +2497,14 @@ function importData(file) {
       return err('That file isn’t a My Finances backup (missing income and transaction records).');
     }
     if (!Array.isArray(d.categories)) d.categories = [];
+    if (!Array.isArray(d.debtCategories)) d.debtCategories = [];
     if (!Array.isArray(d.assets)) d.assets = [];
     if (!Array.isArray(d.liabilities)) d.liabilities = [];
     const hasData = data.incomes.length || data.transactions.length || data.categories.length || data.assets.length || data.liabilities.length;
     if (hasData && !window.confirm('Importing will REPLACE all data currently in this browser with the backup. Continue?')) {
       return;
     }
-    data = { incomes: d.incomes, transactions: d.transactions, categories: d.categories, assets: d.assets, liabilities: d.liabilities };
+    data = { incomes: d.incomes, transactions: d.transactions, categories: d.categories, debtCategories: d.debtCategories, assets: d.assets, liabilities: d.liabilities };
     migrateData(data); // normalize older backups (account tags, income tags, liquid flags)
     month = currentMonth();
     save();
