@@ -957,8 +957,8 @@ async function callClaudeAPI(query, dataContext, onChunk, maxTokens = 500, histo
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        // Sonnet 5 counts thinking against max_tokens, so these budgets are sized
+        model: 'claude-sonnet-5-5',
+        // Thinking counts against max_tokens, so these budgets are sized
         // to leave room for it — too small and the answer truncates mid-sentence.
         max_tokens: maxTokens,
         thinking: { type: 'adaptive' },
