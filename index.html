@@ -599,6 +599,7 @@ select:focus { outline: none; border-color: var(--accent); }
           <option value="3">Last 3 months</option>
           <option value="6">Last 6 months</option>
           <option value="ytd" selected>Year to date</option>
+          <option value="24">Last 2 years</option>
           <option value="all">All time</option>
         </select>
         <span class="muted small" id="aiTokenEstimate"></span>
@@ -1222,6 +1223,9 @@ function extractAndSummarizeData(months = 6) {
 function getRecentMonths(count) {
   const months = [];
   const d = new Date();
+  // Pin to the 1st: stepping back a month from the 31st would land on e.g.
+  // "Sep 31", which rolls over to Oct 1 and repeats October while skipping September.
+  d.setDate(1);
   for (let i = 0; i < count; i++) {
     const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0');
     months.unshift(`${y}-${m}`);
@@ -1258,10 +1262,10 @@ function getTokenBudget(monthCount) {
   };
 }
 
-// Rough Claude Sonnet 5 pricing: $3 / 1M input, $15 / 1M output. Thinking is
+// Claude Sonnet 5.5 pricing: $2 / 1M input, $10 / 1M output. Thinking is
 // billed as output, so a typical answer is assumed to be ~1200 output tokens.
-const AI_PRICE_IN_PER_MTOK = 3.00;
-const AI_PRICE_OUT_PER_MTOK = 15.00;
+const AI_PRICE_IN_PER_MTOK = 2.00;
+const AI_PRICE_OUT_PER_MTOK = 10.00;
 const AI_TYPICAL_OUTPUT_TOKENS = 1200;
 function estimateCost(inputTokens) {
   const dollars = (inputTokens / 1e6) * AI_PRICE_IN_PER_MTOK
